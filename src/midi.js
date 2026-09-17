@@ -12,6 +12,16 @@ import { clamp } from './util.js';
 
 export const MIDI_SUPPORTED = typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator;
 
+/**
+ * How far ahead a note-off is handed to the port. Short, because a note-off
+ * held in our own queue can still be brought forward when the same note is
+ * retriggered, and one already given to the port cannot be taken back.
+ */
+const OFF_FLUSH_AHEAD = 0.08;
+
+/** A retriggered note is released this long before it sounds again. */
+const RETRIGGER_GAP = 0.001;
+
 export class MidiOut {
   /** @param {{now: () => number}} clock the audio clock to convert against */
   constructor(clock) {
@@ -22,6 +32,7 @@ export class MidiOut {
     this.status = MIDI_SUPPORTED ? 'idle' : 'unsupported';
     this.onChange = () => {};
     this.sounding = new Set(); // "ch:note" currently expected to be down
+    this.pendingOffs = []; // note-offs not yet handed to the port
   }
 
   get enabled() {
@@ -78,21 +89,64 @@ export class MidiOut {
     return performance.now() + (audioTime - this.clock.now()) * 1000;
   }
 
+  /**
+   * Schedule a note.
+   *
+   * The note-off is queued rather than sent, because MIDI has no concept of
+   * "this note, specifically" — a note-off is just a channel and a pitch. If
+   * the same pitch is retriggered on the same channel before the first one
+   * ends, sending both note-offs up front means the earlier one cuts the later
+   * note short, and the last one arrives with nothing sounding. Holding them
+   * lets a retrigger release the previous note first instead.
+   */
   noteOn(channel, note, velocity, at, durationSec) {
     const out = this.output;
     if (!out) return;
     const ch = clamp(Math.round(channel), 1, 16) - 1;
     const n = clamp(Math.round(note), 0, 127);
     const v = clamp(Math.round(velocity), 1, 127);
-    const start = this.toMidiTime(at);
-    const end = start + Math.max(10, durationSec * 1000);
+    const key = `${ch}:${n}`;
+    const end = at + Math.max(0.01, durationSec);
+
+    // Release anything of this pitch still due to be held past our start.
+    for (const off of this.pendingOffs) {
+      if (off.key !== key || off.time <= at) continue;
+      this.sendOff(off, Math.max(at - RETRIGGER_GAP, off.start));
+    }
+    this.pendingOffs = this.pendingOffs.filter((off) => !off.done);
+
     try {
-      out.send([0x90 | ch, n, v], start);
-      out.send([0x80 | ch, n, 0], end);
-      this.sounding.add(`${ch}:${n}`);
+      out.send([0x90 | ch, n, v], this.toMidiTime(at));
+    } catch {
+      return; // port closed mid-send
+    }
+    this.sounding.add(key);
+    this.pendingOffs.push({ key, ch, note: n, start: at, time: end, done: false });
+  }
+
+  /** Hand one queued note-off to the port, optionally earlier than planned. */
+  sendOff(off, at = off.time) {
+    if (off.done) return;
+    off.done = true;
+    this.sounding.delete(off.key);
+    try {
+      this.output?.send([0x80 | off.ch, off.note, 0], this.toMidiTime(at));
     } catch {
       /* port closed mid-send */
     }
+  }
+
+  /**
+   * Hand over the note-offs now close enough to be due. Called from the
+   * scheduler tick, on the same clock as everything else.
+   */
+  flush(audioNow) {
+    if (!this.pendingOffs.length) return;
+    const horizon = audioNow + OFF_FLUSH_AHEAD;
+    for (const off of this.pendingOffs) {
+      if (off.time <= horizon) this.sendOff(off);
+    }
+    this.pendingOffs = this.pendingOffs.filter((off) => !off.done);
   }
 
   /** Cancel anything pending and silence every channel. */
@@ -113,5 +167,6 @@ export class MidiOut {
       /* ignore */
     }
     this.sounding.clear();
+    this.pendingOffs.length = 0;
   }
 }

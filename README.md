@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 98 unit tests, no dependencies
+npm test           # 110 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -113,6 +113,33 @@ Measured over 15 seconds of that same patch: 2256 voices built, 2256 retired,
 Cost scales with how many voices sound at once, so if a dense patch struggles on
 slower hardware the levers are fewer Voice nodes, a shorter release, or a lower
 voice count per node — not a faster machine.
+
+## Driving other instruments
+
+This is what Gridi is for. The built-in voices exist so a patch makes a sound
+while you build it; the output is the MIDI.
+
+To reach a DAW, send to a virtual MIDI port — IAC Driver on macOS, loopMIDI on
+Windows — and have the DAW listen on it. There is no direct app-to-app route.
+
+**Note-offs are queued, not sent up front.** MIDI has no concept of "this note,
+specifically": a note-off is a channel and a pitch, nothing more. So if a pitch
+is retriggered on a channel before its first note ends, sending both note-offs
+when the notes are scheduled means the earlier one cuts the later note short,
+and the last one arrives with nothing sounding. Gridi holds each note-off until
+it is nearly due, which leaves room to release a note properly when the same
+pitch comes round again.
+
+One consequence is worth knowing, because it is MIDI's and not the app's: **on a
+single channel, note length is capped by the retrigger rate.** Ask for a
+one-beat note from a 1/16 clock and each note sounds for a sixteenth, because
+two instances of one pitch on one channel cannot overlap. For real overlap, use
+different pitches, or put the parts on different channels — which is what a
+line carrying several channels is for.
+
+Stop and panic cancel everything still queued at the port, release every note
+believed to be sounding, and send all-notes-off and all-sound-off on all
+sixteen channels, so nothing is left hanging in the receiving instrument.
 
 ## Lines are objects, not drawings
 
@@ -229,7 +256,13 @@ Dark mode included, because nobody performs under a white screen.
 
 - Node groups and sub-patches.
 - MIDI clock in/out and external sync.
-- CC output from Param nodes (they modulate in-app parameters only).
+- MIDI clock out. There is no 0xF8 clock, start, stop or song-position, so a
+  receiving instrument cannot sync to Gridi's tempo — only respond to its notes.
+- CC output from Param nodes (they modulate in-app parameters only), and no
+  pitch bend, aftertouch or program change.
+- One output port at a time. Channels are per line, but the device is global,
+  so several instruments mean one port and channel splits at the far end.
+- MIDI in, for external clock or for triggering pulses from a keyboard.
 - An LFO. Modulation is step-wise today: a Param node changes a value when a
   pulse arrives, so filter sweeps and vibrato come out as staircases.
 - Filter types beyond low-pass.

@@ -146,6 +146,9 @@ export class Engine {
     this.scheduleEmitters(patch, horizon);
     this.drain(patch, horizon);
     this.sweepBuckets(now);
+    // Note-offs are held until they are nearly due, so a retriggered note can
+    // still be released first. This is the tick that lets them go.
+    if (typeof this.midi.flush === 'function') this.midi.flush(now);
   }
 
   scheduleEmitters(patch, horizon) {
