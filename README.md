@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 153 unit tests, no dependencies
+npm test           # 168 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -65,7 +65,7 @@ Windows — and have the DAW listen on it. There is no direct app-to-app route.
 | **Router** | Sends each pulse down exactly one line — cycling, ping-pong, random, or random with no repeats. Melodic variation, as against Split's "all at once". |
 | **Note** | Fires a **scale degree** as MIDI on every channel the line carries. Ratchets subdivide one trigger. |
 | **Voice** | A subtractive Web Audio synth: two independent oscillators, a resonant low-pass with its own contour, and an ADSR. |
-| **Param** | Rewrites a parameter instead of firing a note, then passes the pulse on. Can target another node, or the pulse itself. |
+| **Param** | Changes a value instead of firing a note, then passes the pulse on. Can drive another node, the pulse itself, or a MIDI controller on the instrument being played. |
 | **Key** | Rewrites scale and key for everything downstream, live. Latch mode writes the project key so the whole patch modulates. |
 
 ## The Voice node
@@ -135,6 +135,24 @@ instead, remembered between sessions and dropped when the device disappears.
 Clock goes to every output set to receive it, and each has its own **Clk** toggle
 for gear that runs on its own clock. The same pitch and channel on two devices
 are two separate notes, tracked separately.
+
+**Param nodes send control changes.** Set a Param node's scope to CC and it
+sends its value as a controller instead of changing something in the app — a
+filter sweep, a mod wheel, anything the receiving instrument listens for.
+
+Where it goes is the line's business, exactly as it is for notes: a CC follows
+the same outputs and channels the line carries, so a controller reaches the
+instrument it belongs to without being routed separately. All four modes work,
+held to seven bits whatever the node's range is set to.
+
+Repeats are dropped. A modulator stepping through a sequence or drifting within
+a range lands on the same value often, and a controller that has not moved is
+worth no bytes at all — CC is the usual reason a MIDI cable saturates. Measured
+on a random walk, 20 pulses produced 14 messages.
+
+Unlike a note-off, a CC may be thrown away under load: a dropped one leaves a
+value briefly stale, where a dropped note-off leaves a note sounding for good.
+So controllers go through the same throttle as note-ons.
 
 **Clock goes out with the notes.** Gridi sends MIDI clock at the standard 24
 pulses per quarter note, with Start and Song Position when the transport rolls
@@ -324,8 +342,8 @@ Dark mode included, because nobody performs under a white screen.
 
 - Node groups and sub-patches.
 - MIDI clock in/out and external sync.
-- CC output from Param nodes (they modulate in-app parameters only), and no
-  pitch bend, aftertouch or program change.
+- Pitch bend, aftertouch and program change. Control change is the only message
+  a Param node sends.
 - MIDI in, for external clock or for triggering pulses from a keyboard.
 - An LFO. Modulation is step-wise today: a Param node changes a value when a
   pulse arrives, so filter sweeps and vibrato come out as staircases.
