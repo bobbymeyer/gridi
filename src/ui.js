@@ -192,7 +192,7 @@ export class Inspector {
     title.append(h, el('p', null, meta.blurb));
     this.root.append(title);
 
-    const nameRow = makeRow('Name');
+    const nameRow = makeRow('name');
     const nameInput = el('input', 'field');
     nameInput.type = 'text';
     nameInput.placeholder = meta.label;
@@ -203,7 +203,7 @@ export class Inspector {
 
     let currentGroup = null;
     for (const spec of meta.params) {
-      const group = spec.group ?? 'Settings';
+      const group = spec.group ?? 'settings';
       if (group !== currentGroup) {
         currentGroup = group;
         this.root.append(el('div', 'group', group));
@@ -212,7 +212,7 @@ export class Inspector {
     }
 
     const stats = el('div', 'row row--readout');
-    stats.append(el('span', 'row__label', 'Patched'));
+    stats.append(el('span', 'row__label', 'patched'));
     const value = el('span', 'row__value');
     stats.append(value);
     this.root.append(stats);
@@ -222,7 +222,7 @@ export class Inspector {
       sync: () => {
         const ins = patch.lines.filter((l) => l.to === node.id).length;
         const outs = patch.lines.filter((l) => l.from === node.id).length;
-        value.textContent = `${ins} IN / ${outs} OUT`;
+        value.textContent = `${ins} in / ${outs} out`;
       },
     });
     this.refresh(patch, { kind: 'node', id: node.id });
@@ -359,7 +359,7 @@ export class Inspector {
     const to = nodeById(patch, line.to);
 
     const title = el('div', 'pane__title');
-    title.append(el('h2', null, 'Line'));
+    title.append(el('h2', null, 'line'));
     title.append(
       el(
         'p',
@@ -372,11 +372,11 @@ export class Inspector {
     /* Channels ------------------------------------------------------------ */
     this.root.append(el('div', 'group', 'MIDI channels'));
 
-    const modeRow = makeRow('Mode');
+    const modeRow = makeRow('mode');
     const seg = el('div', 'seg');
     const modes = [
-      { value: 'inherit', label: 'Inherit' },
-      { value: 'set', label: 'Set here' },
+      { value: 'inherit', label: 'inherit' },
+      { value: 'set', label: 'set here' },
     ];
     const modeButtons = modes.map((m) => {
       const b = el('button', null, m.label);
@@ -404,7 +404,7 @@ export class Inspector {
       const slot = asSlot(this.channelSlot ?? line.channels[0]?.out);
       this.channelSlot = slot;
 
-      const slotRow = makeRow('Output');
+      const slotRow = makeRow('output');
       const slotSeg = el('div', 'seg');
       const slotButtons = SLOTS.map((name) => {
         const b = el('button', null, name);
@@ -474,7 +474,7 @@ export class Inspector {
         item.append(where, el('b', null, String(chan.ch)));
 
         const tWrap = el('label');
-        tWrap.append(el('span', null, 'Transp'));
+        tWrap.append(el('span', null, 'transp'));
         const tInput = el('input');
         tInput.type = 'number';
         tInput.value = String(chan.transpose);
@@ -487,7 +487,7 @@ export class Inspector {
         tWrap.append(tInput);
 
         const vWrap = el('label');
-        vWrap.append(el('span', null, 'Vel'));
+        vWrap.append(el('span', null, 'vel'));
         const vInput = el('input');
         vInput.type = 'number';
         vInput.placeholder = 'auto';
@@ -512,9 +512,9 @@ export class Inspector {
     }
 
     /* Scale --------------------------------------------------------------- */
-    this.root.append(el('div', 'group', 'Scale and key'));
+    this.root.append(el('div', 'group', 'scale and key'));
 
-    const scaleModeRow = makeRow('Mode');
+    const scaleModeRow = makeRow('mode');
     const scaleSeg = el('div', 'seg');
     const scaleModes = [
       { value: 'inherit', label: 'Inherit' },
@@ -541,7 +541,7 @@ export class Inspector {
     });
 
     if (line.scaleMode === 'set') {
-      const keyRow = makeRow('Key');
+      const keyRow = makeRow('key');
       keyRow.control.append(
         buildSelect(NOTE_NAMES.map((n, i) => ({ value: i, label: n })), line.root, (v) =>
           this.hooks.onLineField(line, 'root', v)),
@@ -555,9 +555,9 @@ export class Inspector {
     }
 
     /* Timing and state ---------------------------------------------------- */
-    this.root.append(el('div', 'group', 'Timing'));
+    this.root.append(el('div', 'group', 'timing'));
 
-    const delayRow = makeRow('Delay');
+    const delayRow = makeRow('delay');
     const delay = el('input');
     delay.type = 'range';
     delay.min = '0';
@@ -575,7 +575,7 @@ export class Inspector {
     const delayHint = el('p', 'row__hint', 'In beats. Distance on the grid never affects timing.');
     delayRow.row.append(delayHint);
 
-    const muteRow = makeRow('Mute');
+    const muteRow = makeRow('mute');
     const mute = el('input');
     mute.type = 'checkbox';
     mute.checked = line.muted;
@@ -584,7 +584,7 @@ export class Inspector {
     this.root.append(muteRow.row);
 
     const summary = el('div', 'row row--readout');
-    summary.append(el('span', 'row__label', 'Carrying'));
+    summary.append(el('span', 'row__label', 'carrying'));
     const summaryValue = el('span', 'row__value');
     summary.append(summaryValue);
     this.root.append(summary);

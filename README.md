@@ -45,7 +45,7 @@ need a browser.
 | Active | on / off |
 | Division | 1/1, 1/2, 1/4, 1/8, 1/16, 1/32, 1/2T, 1/4T, 1/8T, 1/16T, 1/4., 1/8. |
 | Swing | 0–60%, delays every second step |
-| Poly steps / In the time of | 1–16 each, steps against divisions |
+| poly steps / in the time of | 1–16 each, steps against divisions |
 | Humanize | 0–40 ms |
 | Euclid | hits, steps, rotate |
 | Key from | project / this node |

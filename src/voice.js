@@ -8,7 +8,7 @@
 import { clamp } from './util.js';
 
 export const WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth'];
-export const WAVE_LABELS = { sine: 'SIN', triangle: 'TRI', square: 'SQR', sawtooth: 'SAW' };
+export const WAVE_LABELS = { sine: 'sin', triangle: 'tri', square: 'sqr', sawtooth: 'saw' };
 
 /** Web Audio cannot ramp to zero on an exponential curve. */
 export const SILENCE = 0.0001;

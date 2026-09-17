@@ -64,7 +64,6 @@ button { cursor: pointer; background: none; border: 0; }
 .micro {
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 
@@ -100,13 +99,11 @@ button { cursor: pointer; background: none; border: 0; }
 .head__mark b {
   font: 700 26px/0.86 var(--font);
   letter-spacing: -0.035em;
-  text-transform: uppercase;
 }
 
 .head__mark span {
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: rgba(255, 255, 255, 0.85);
   margin-top: 5px;
 }
@@ -141,7 +138,6 @@ button { cursor: pointer; background: none; border: 0; }
   padding: 0 20px;
   font: 700 15px/1 var(--font);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   background: var(--ink);
   color: var(--paper);
   min-width: 132px;
@@ -210,7 +206,6 @@ input.field {
   padding: 0 6px;
   font: 600 11px/1 var(--font);
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   background: var(--paper);
   border-radius: 0;
   appearance: none;
@@ -236,7 +231,6 @@ input.field[type="number"] { text-transform: none; }
   border: var(--rule-w) solid var(--rule);
   font: 600 10px/1 var(--font);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   background: var(--paper);
   color: var(--ink);
 }
@@ -256,7 +250,6 @@ input.field[type="number"] { text-transform: none; }
   border-left-width: 0;
   font: 600 10px/1 var(--font);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   background: var(--paper);
 }
 .seg > button:first-child { border-left-width: var(--rule-w); }
@@ -360,7 +353,6 @@ input[type="checkbox"]:checked::after {
   border-bottom: var(--rule-w) solid var(--rule);
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
 }
 
 .rail__head b, .pane__head b { font-weight: 700; color: var(--ink); }
@@ -392,14 +384,12 @@ input[type="checkbox"]:checked::after {
   display: block;
   font: 700 12px/1.1 var(--font);
   letter-spacing: 0.01em;
-  text-transform: uppercase;
 }
 
 .chip__role {
   display: block;
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
   margin-top: 3px;
 }
@@ -423,7 +413,6 @@ input[type="checkbox"]:checked::after {
   font: var(--micro);
   line-height: 1.5;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 
@@ -440,7 +429,6 @@ input[type="checkbox"]:checked::after {
   gap: 14px;
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
   pointer-events: none;
 }
@@ -456,7 +444,6 @@ input[type="checkbox"]:checked::after {
   color: #fff;
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   pointer-events: none;
 }
 
@@ -482,7 +469,6 @@ input[type="checkbox"]:checked::after {
 .pane__title h2 {
   font: 700 19px/1 var(--font);
   letter-spacing: -0.02em;
-  text-transform: uppercase;
 }
 
 .pane__title p {
@@ -490,7 +476,6 @@ input[type="checkbox"]:checked::after {
   font: var(--micro);
   line-height: 1.5;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 
@@ -501,7 +486,6 @@ input[type="checkbox"]:checked::after {
   border-bottom: 1px solid var(--rule);
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   background: var(--paper-2);
 }
 
@@ -517,7 +501,6 @@ input[type="checkbox"]:checked::after {
 .row__label {
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 
@@ -538,7 +521,6 @@ input[type="checkbox"]:checked::after {
   font: var(--micro);
   line-height: 1.45;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--ink-soft);
   padding-top: 2px;
 }
@@ -646,7 +628,6 @@ input[type="checkbox"]:checked::after {
 .chan-item span {
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 
@@ -675,7 +656,6 @@ input[type="checkbox"]:checked::after {
   color: var(--yellow);
   font: 700 11px/1 var(--font);
   letter-spacing: var(--track);
-  text-transform: uppercase;
 }
 
 .guard__body { flex: 1; padding: 9px 14px 10px; min-width: 0; }
@@ -684,7 +664,6 @@ input[type="checkbox"]:checked::after {
   display: block;
   font: 700 13px/1.2 var(--font);
   letter-spacing: 0.01em;
-  text-transform: uppercase;
 }
 
 .guard__body p {
@@ -717,7 +696,6 @@ input[type="checkbox"]:checked::after {
   background: var(--paper);
   font: var(--micro);
   letter-spacing: var(--track);
-  text-transform: uppercase;
   color: var(--ink-soft);
   overflow: hidden;
   white-space: nowrap;
@@ -751,7 +729,6 @@ input[type="checkbox"]:checked::after {
   font: var(--micro);
   line-height: 1.5;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   border-bottom: var(--rule-w) solid var(--rule);
 }
 

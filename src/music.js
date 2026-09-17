@@ -11,20 +11,20 @@ export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A',
 
 /** Semitone offsets from the root, one entry per degree. */
 export const SCALES = {
-  major: { label: 'Major', steps: [0, 2, 4, 5, 7, 9, 11] },
-  minor: { label: 'Nat Minor', steps: [0, 2, 3, 5, 7, 8, 10] },
-  harmonic: { label: 'Harm Minor', steps: [0, 2, 3, 5, 7, 8, 11] },
-  melodic: { label: 'Mel Minor', steps: [0, 2, 3, 5, 7, 9, 11] },
+  major: { label: 'major', steps: [0, 2, 4, 5, 7, 9, 11] },
+  minor: { label: 'nat minor', steps: [0, 2, 3, 5, 7, 8, 10] },
+  harmonic: { label: 'harm minor', steps: [0, 2, 3, 5, 7, 8, 11] },
+  melodic: { label: 'mel minor', steps: [0, 2, 3, 5, 7, 9, 11] },
   dorian: { label: 'Dorian', steps: [0, 2, 3, 5, 7, 9, 10] },
   phrygian: { label: 'Phrygian', steps: [0, 1, 3, 5, 7, 8, 10] },
   lydian: { label: 'Lydian', steps: [0, 2, 4, 6, 7, 9, 11] },
   mixolydian: { label: 'Mixolydian', steps: [0, 2, 4, 5, 7, 9, 10] },
   locrian: { label: 'Locrian', steps: [0, 1, 3, 5, 6, 8, 10] },
-  majPent: { label: 'Maj Pent', steps: [0, 2, 4, 7, 9] },
-  minPent: { label: 'Min Pent', steps: [0, 3, 5, 7, 10] },
-  blues: { label: 'Blues', steps: [0, 3, 5, 6, 7, 10] },
-  wholeTone: { label: 'Whole Tone', steps: [0, 2, 4, 6, 8, 10] },
-  chromatic: { label: 'Chromatic', steps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+  majPent: { label: 'maj pent', steps: [0, 2, 4, 7, 9] },
+  minPent: { label: 'min pent', steps: [0, 3, 5, 7, 10] },
+  blues: { label: 'blues', steps: [0, 3, 5, 6, 7, 10] },
+  wholeTone: { label: 'whole tone', steps: [0, 2, 4, 6, 8, 10] },
+  chromatic: { label: 'chromatic', steps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
 };
 
 export const SCALE_KEYS = Object.keys(SCALES);
@@ -35,9 +35,9 @@ export const SCALE_KEYS = Object.keys(SCALES);
  * what every musician expects.
  */
 export const DEGREE_MODES = {
-  extend: 'Extend',
-  fold: 'Fold',
-  clamp: 'Clamp',
+  extend: 'extend',
+  fold: 'fold',
+  clamp: 'clamp',
 };
 
 /**

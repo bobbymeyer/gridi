@@ -11,10 +11,10 @@ test('a new line inherits rather than overriding', () => {
   assert.equal(line.channelMode, 'inherit');
   assert.equal(line.scaleMode, 'inherit');
   assert.equal(line.delay, 0);
-  assert.equal(channelSummary(line), 'INHERIT');
+  assert.equal(channelSummary(line), 'inherit');
   line.channelMode = 'set';
   line.channels = [createChannel(1), createChannel(9)];
-  assert.equal(channelSummary(line), 'CH 1,9');
+  assert.equal(channelSummary(line), 'ch 1,9');
 });
 
 test('connection rules', () => {

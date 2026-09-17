@@ -104,10 +104,10 @@ const engine = new Engine({
     renderer.addFire(evt);
     if (evt.kind === 'note' && evt.notes?.length) {
       const text = evt.notes.map((n) => noteName(n.note)).join(' ');
-      state.lastNotes.set(evt.nodeId, `${text}${evt.notes[0].ch ? ` · CH ${evt.notes.map((n) => n.ch).join(',')}` : ''}`);
-      pushLog(`${text} → ${evt.notes.map((n) => (n.ch ? `CH${n.ch}` : 'VOICE')).join(' ')}`);
+      state.lastNotes.set(evt.nodeId, `${text}${evt.notes[0].ch ? ` · ch ${evt.notes.map((n) => n.ch).join(',')}` : ''}`);
+      pushLog(`${text} → ${evt.notes.map((n) => (n.ch ? `ch${n.ch}` : 'voice')).join(' ')}`);
     } else if (evt.kind === 'key') {
-      pushLog(`KEY → ${keyName(evt.root, evt.scale).toUpperCase()}`);
+      pushLog(`key → ${keyName(evt.root, evt.scale)}`);
     } else if (evt.kind === 'cc') {
       const where = evt.sent.length ? evt.sent.join(' ') : 'nowhere';
       state.lastCC.set(evt.nodeId, `${evt.value} → ${where}`);
@@ -243,7 +243,7 @@ const syncPalette = buildPalette($('palette'), {
     const placing = $('placing');
     placing.hidden = !state.ui.placing;
     if (state.ui.placing) {
-      placing.textContent = `Placing ${typeMeta(state.ui.placing).label} — click the grid`;
+      placing.textContent = `placing ${typeMeta(state.ui.placing).label} — click the grid`;
     }
   },
   getActive: () => state.ui.placing,
@@ -327,8 +327,8 @@ function syncHeader() {
     state.selection.kind === 'node'
       ? (nodeById(state.patch, state.selection.id)?.label || typeMeta(nodeById(state.patch, state.selection.id)?.type ?? 'note').label)
       : state.selection.kind === 'line'
-        ? 'Line'
-        : 'Nothing';
+        ? 'line'
+        : 'nothing';
 }
 
 function select(kind, id) {
@@ -348,7 +348,7 @@ async function play() {
   engine.start();
   ticker = setInterval(() => engine.tick(), TICK_MS);
   $('play').setAttribute('aria-pressed', 'true');
-  $('play').textContent = 'Stop';
+  $('play').textContent = 'stop';
   $('run-dot').dataset.on = 'true';
   const clock = state.patch.clockOut !== false ? ' with clock' : '';
   setStatus(midi.enabled ? `Sending MIDI${clock}.` : 'Playing through the built-in voices.', 'Running.');
@@ -360,7 +360,7 @@ function stop() {
   engine.stop();
   renderer.clearMotion();
   $('play').setAttribute('aria-pressed', 'false');
-  $('play').textContent = 'Play';
+  $('play').textContent = 'play';
   $('run-dot').dataset.on = 'false';
   setStatus('Stopped.', '');
 }
@@ -707,7 +707,7 @@ $('volume').addEventListener('input', () => audio.setVolume(Number($('volume').v
 $('theme').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
-  $('theme').textContent = next === 'dark' ? 'Light' : 'Dark';
+  $('theme').textContent = next === 'dark' ? 'light' : 'dark';
   try {
     localStorage.setItem(THEME_KEY, next);
   } catch {
@@ -762,7 +762,7 @@ function syncMidi() {
   picker.value = midi.slots.get(editingSlot)?.portId ?? '';
 
   const clockBtn = $('slot-clock');
-  clockBtn.textContent = `Clk ${editingSlot}`;
+  clockBtn.textContent = `clk ${editingSlot}`;
   clockBtn.setAttribute('aria-pressed', String(midi.sendsClock(editingSlot)));
   clockBtn.disabled = state.patch.clockOut === false;
   clockBtn.title = `Send clock to output ${editingSlot}`;
@@ -770,13 +770,13 @@ function syncMidi() {
   const btn = $('midi-enable');
   const bound = midi.boundSlots.length;
   if (midi.status === 'ready') {
-    btn.textContent = bound > 1 ? `MIDI \u00d7${bound}` : 'MIDI On';
+    btn.textContent = bound > 1 ? `MIDI \u00d7${bound}` : 'MIDI on';
     btn.setAttribute('aria-pressed', 'true');
   } else if (midi.status === 'no-ports') {
-    btn.textContent = 'No ports';
+    btn.textContent = 'no ports';
     btn.setAttribute('aria-pressed', 'false');
   } else {
-    btn.textContent = 'Enable MIDI';
+    btn.textContent = 'enable MIDI';
     btn.setAttribute('aria-pressed', 'false');
   }
   saveOutputs();
@@ -956,7 +956,7 @@ function boot() {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === 'dark') {
       document.documentElement.dataset.theme = 'dark';
-      $('theme').textContent = 'Light';
+      $('theme').textContent = 'light';
     }
   } catch {
     /* ignore */
