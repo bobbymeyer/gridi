@@ -16,6 +16,7 @@ import { outgoing, incoming, nodeById } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
 import { PPQN, DEFAULT_SLOT } from './midi.js';
+import { ClockFollower } from './sync.js';
 
 export const LOOKAHEAD = 0.14; // seconds of future we schedule each tick
 export const TICK_MS = 25;
@@ -58,7 +59,7 @@ export class Engine {
    * @param {(evt: object) => void} [io.onPulse]  visual pulse travelling a line
    * @param {(evt: object) => void} [io.onFire]   a node produced sound
    */
-  constructor({ getPatch, audio, midi, onPulse, onFire, governor, onOverload }) {
+  constructor({ getPatch, audio, midi, onPulse, onFire, governor, onOverload, onExternalTransport }) {
     this.getPatch = getPatch;
     this.audio = audio;
     this.midi = midi;
@@ -69,6 +70,8 @@ export class Engine {
     this.eventRate = new RateMeter();
     this.clockPulse = 0; // index of the next clock pulse to schedule
     this.clockOn = false; // whether clock was being sent as of the last tick
+    this.follower = new ClockFollower(); // used when something else is master
+    this.onExternalTransport = onExternalTransport ?? (() => {});
 
     this.running = false;
     this.queue = new EventQueue();
@@ -131,6 +134,90 @@ export class Engine {
     this.bpm = next;
   }
 
+  /* ------------------------------------------------- following a master */
+
+  /**
+   * Bring the local grid onto the incoming clock.
+   *
+   * Tempo comes from the follower's median interval, and moving it re-anchors,
+   * so the current beat is preserved rather than jumping. Phase is then taken
+   * out a fraction at a time: correcting it fully on every pulse would jerk the
+   * grid 24 times a quarter note, which is audible. Only a gross error — the
+   * master relocating, or pulses lost — is worth snapping to.
+   */
+  followExternal(now) {
+    const follower = this.follower;
+    if (!follower.running) return;
+
+    const tempo = follower.tempo;
+    if (tempo !== null && Math.abs(tempo - this.bpm) > 0.05) this.setBpm(tempo);
+
+    const { jump, delta } = follower.correctionFor(this.timeToBeat(now));
+    if (jump) {
+      this.anchorBeat = follower.beat;
+      this.anchorTime = now;
+    } else {
+      this.anchorBeat += delta;
+    }
+  }
+
+  externalClock(at) {
+    this.follower.pulse(at);
+  }
+
+  externalStart() {
+    this.follower.start(0);
+    this.onExternalTransport('start');
+  }
+
+  externalContinue() {
+    this.follower.resume();
+    this.onExternalTransport('continue');
+  }
+
+  externalStop() {
+    this.follower.stop();
+    this.onExternalTransport('stop');
+  }
+
+  externalPosition(sixteenths) {
+    this.follower.locate(sixteenths);
+  }
+
+  /**
+   * A note played on an attached keyboard. Every Input node listening on that
+   * channel emits a pulse, so a keyboard is another kind of source rather than
+   * a special case bolted to the side of the graph.
+   */
+  externalNote({ channel, note, velocity, at }) {
+    if (!this.running) return 0;
+    const patch = this.getPatch();
+    const when = Math.max(at, this.audio.now() + 0.002);
+    let fired = 0;
+    for (const node of patch.nodes) {
+      if (node.type !== 'input') continue;
+      const listen = Math.round(node.params.listen);
+      if (listen !== 0 && listen !== channel) continue;
+      const ctx = this.playedContext(patch, node, note, velocity);
+      this.onFire({ nodeId: node.id, time: when, kind: 'played', note, velocity });
+      this.send(patch, node.id, ctx, when, 0);
+      fired += 1;
+    }
+    return fired;
+  }
+
+  /** The context an Input node starts a pulse with, given the note played. */
+  playedContext(patch, node, note, velocity) {
+    const ctx = this.initialContext(patch, node);
+    if (node.params.useVelocity) ctx.velocity = clamp(Math.round(velocity), 1, 127);
+    if (node.params.sets === 'key') {
+      ctx.root = wrap(Math.round(note), 12);
+    } else if (node.params.sets === 'transpose') {
+      ctx.transpose += Math.round(note) - Math.round(node.params.base);
+    }
+    return ctx;
+  }
+
   beatToTime(beat) {
     return this.anchorTime + ((beat - this.anchorBeat) * 60) / this.bpm;
   }
@@ -155,9 +242,10 @@ export class Engine {
   tick() {
     if (!this.running) return;
     const patch = this.getPatch();
-    if (patch.bpm !== this.bpm) this.setBpm(patch.bpm);
-
     const now = this.audio.now();
+    if (patch.sync === 'external') this.followExternal(now);
+    else if (patch.bpm !== this.bpm) this.setBpm(patch.bpm);
+
     const horizon = now + LOOKAHEAD;
 
     this.scheduleClock(patch, horizon, now);

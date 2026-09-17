@@ -198,6 +198,12 @@ export class MidiOut {
     return this.timeOffset + audioTime * 1000;
   }
 
+  /** The other way, for messages arriving stamped in the MIDI domain. */
+  toAudioTime(midiTime) {
+    if (this.timeOffset === null) this.syncTime();
+    return (midiTime - this.timeOffset) / 1000;
+  }
+
   /* -------------------------------------------------------------- sending */
 
   /** Put bytes on one slot's device, counted but never refused. */

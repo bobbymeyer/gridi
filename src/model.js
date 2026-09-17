@@ -56,6 +56,7 @@ export function createPatch(name = 'Untitled') {
     name,
     bpm: 112,
     clockOut: true,
+    sync: 'internal',
     root: 0,
     scale: 'minPent',
     seed: 1,
@@ -160,6 +161,7 @@ export function deserialize(text, onLimit) {
 
   patch.bpm = clamp(Number(raw.bpm) || 112, 20, 300);
   patch.clockOut = raw.clockOut !== false;
+  patch.sync = raw.sync === 'external' ? 'external' : 'internal';
   patch.root = clamp(Math.round(Number(raw.root) || 0), 0, 11);
   patch.scale = SCALES[raw.scale] ? raw.scale : 'minPent';
   patch.seed = Number(raw.seed) || 1;

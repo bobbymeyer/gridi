@@ -28,6 +28,7 @@ const GLYPHS = {
   wave: '<path d="M1 8c2.5-7 5 7 7.5 0s4 4 6.5 0" fill="none" stroke-width="2"/>',
   bars: '<rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="5" width="3" height="9"/><rect x="11" y="2" width="3" height="12"/>',
   key: '<rect x="2" y="2" width="7" height="7"/><rect x="7" y="7" width="7" height="7"/>',
+  keys: '<rect x="1" y="3" width="3" height="10"/><rect x="6" y="3" width="3" height="10"/><rect x="11" y="3" width="3" height="10"/>',
 };
 
 function glyphSvg(type, color) {

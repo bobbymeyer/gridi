@@ -54,9 +54,12 @@
       </div>
     </div>
 
-    <div class="mod mod--right">
-      <span class="micro">Level</span>
-      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Output level" style="width:92px">
+    <div class="mod">
+      <span class="micro">MIDI in</span>
+      <div class="mod__row">
+        <select class="field" id="midi-in" aria-label="MIDI input device" style="max-width:120px" disabled></select>
+        <button class="btn" id="sync-ext" aria-pressed="false" title="Follow the incoming MIDI clock instead of the project tempo">Sync</button>
+      </div>
     </div>
 
   </header>
@@ -119,6 +122,11 @@
     <span id="status"><b>Ready.</b> Press play.</span>
     <span class="foot__sep"></span>
     <span class="foot__log" id="log">—</span>
+    <span class="foot__sep"></span>
+    <label class="foot__level">
+      <span>Level</span>
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Output level">
+    </label>
     <span class="foot__sep"></span>
     <span id="counts">0 nodes · 0 lines</span>
   </footer>

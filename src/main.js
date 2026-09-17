@@ -2,6 +2,7 @@
 
 import { AudioEngine } from './audio.js';
 import { MidiOut, MIDI_SUPPORTED, SLOTS } from './midi.js';
+import { MidiIn } from './midi-in.js';
 import { Engine, TICK_MS } from './engine.js';
 import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
@@ -36,6 +37,7 @@ const state = {
   drag: null,
   lastNotes: new Map(), // nodeId -> text, for the "now plays" readout
   lastCC: new Map(), // nodeId -> text, for the CC readout
+  lastPlayed: null, // the most recent note in from a keyboard
   log: [],
 };
 
@@ -43,6 +45,7 @@ const history = { past: [], future: [] };
 
 const audio = new AudioEngine();
 const midi = new MidiOut(audio);
+const midiIn = new MidiIn(midi);
 const canvas = $('canvas');
 
 /**
@@ -53,6 +56,7 @@ const canvas = $('canvas');
 const governor = new Governor((trip) => showGuard(trip));
 audio.governor = governor;
 midi.governor = governor;
+midiIn.governor = governor;
 
 function showGuard({ title, detail, note, repeats }) {
   const count = repeats > 1 ? ` (${repeats}\u00d7)` : '';
@@ -79,6 +83,15 @@ const engine = new Engine({
   audio,
   midi,
   governor,
+  onExternalTransport: (what) => {
+    if (what === 'stop') {
+      if (engine.running) stop();
+      setStatus('The master stopped.', 'Synced.');
+    } else if (!engine.running) {
+      play();
+      setStatus(what === 'continue' ? 'Following the master from where it was.' : 'Following the master.', 'Synced.');
+    }
+  },
   onOverload: ({ stop: shouldStop }) => {
     if (shouldStop && engine.running) {
       stop();
@@ -258,6 +271,10 @@ const inspector = new Inspector($('inspector'), {
     if (key === 'pattern') {
       return patternString(euclid(node.params.euclidPulses, node.params.euclidSteps, node.params.euclidRotate));
     }
+    if (key === 'played') {
+      const played = state.lastPlayed;
+      return played ? `${noteName(played.note)} vel ${played.velocity} ch ${played.channel}` : 'nothing yet';
+    }
     if (key === 'ccTarget') {
       const heard = state.lastCC.get(node.id);
       if (heard) return heard;
@@ -282,6 +299,8 @@ const inspector = new Inspector($('inspector'), {
 function syncHeader() {
   $('bpm').value = String(Math.round(state.patch.bpm));
   $('clock-out').setAttribute('aria-pressed', String(state.patch.clockOut !== false));
+  $('bpm').disabled = state.patch.sync === 'external';
+  syncMidiIn();
   $('root').value = String(state.patch.root);
   $('scale').value = state.patch.scale;
   $('counts').textContent = counts(state.patch);
@@ -762,11 +781,48 @@ function restoreOutputs() {
 }
 
 midi.onChange = syncMidi;
+midiIn.onChange = syncMidiIn;
+midiIn.onClock = (at) => engine.externalClock(at);
+midiIn.onStart = () => engine.externalStart();
+midiIn.onContinue = () => engine.externalContinue();
+midiIn.onStop = () => engine.externalStop();
+midiIn.onPosition = (sixteenths) => engine.externalPosition(sixteenths);
+midiIn.onNote = (played) => {
+  state.lastPlayed = played;
+  if (engine.externalNote(played) === 0 && state.patch.nodes.every((n) => n.type !== 'input')) {
+    setStatus('A note arrived, but the patch has no MIDI In node to receive it.', 'Heard:');
+  }
+};
+
+function syncMidiIn() {
+  const picker = $('midi-in');
+  picker.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = '\u2014 none \u2014';
+  picker.append(none);
+  for (const device of midiIn.inputs) {
+    const opt = document.createElement('option');
+    opt.value = device.id;
+    opt.textContent = device.name;
+    picker.append(opt);
+  }
+  picker.disabled = midiIn.inputs.length === 0;
+  picker.value = midiIn.inputId ?? '';
+  const btn = $('sync-ext');
+  const external = state.patch.sync === 'external';
+  btn.setAttribute('aria-pressed', String(external));
+  btn.disabled = !midiIn.enabled;
+  btn.title = external
+    ? 'Following the incoming MIDI clock'
+    : 'Follow the incoming MIDI clock instead of the project tempo';
+}
 
 $('midi-enable').addEventListener('click', async () => {
   const ok = await midi.enable();
   if (ok && midi.outputs.length) {
     restoreOutputs();
+    midiIn.attach(midi.access);
     const bound = midi.boundSlots.map((s) => `${s}: ${midi.deviceName(s)}`).join(' · ');
     setStatus(`${bound}. Pick A–D to bind the others.`, 'MIDI ready.');
   } else if (ok) {
@@ -778,6 +834,28 @@ $('midi-enable').addEventListener('click', async () => {
   } else {
     setStatus('MIDI could not be started.', 'Error.');
   }
+});
+
+$('midi-in').addEventListener('change', (e) => {
+  midiIn.setInput(e.target.value || null);
+  const name = midiIn.deviceName();
+  setStatus(name ? `Listening to ${name}.` : 'Not listening to anything.', 'MIDI in.');
+});
+
+$('sync-ext').addEventListener('click', () => {
+  state.patch.sync = state.patch.sync === 'external' ? 'internal' : 'external';
+  if (state.patch.sync === 'internal') {
+    engine.follower.reset();
+    engine.setBpm(state.patch.bpm);
+  }
+  syncHeader();
+  save();
+  setStatus(
+    state.patch.sync === 'external'
+      ? 'Following the incoming clock. Start the master to begin.'
+      : 'Back on the project tempo.',
+    'Sync.',
+  );
 });
 
 $('midi-out').addEventListener('change', (e) => {
@@ -844,6 +922,9 @@ function frame(now) {
     lastChrome = now;
     const pos = engine.position();
     $('position').textContent = `${String(pos.bar).padStart(3, '0')}.${pos.beat}`;
+    if (state.patch.sync === 'external' && document.activeElement !== $('bpm')) {
+      $('bpm').value = String(Math.round(engine.bpm));
+    }
     $('log').textContent = state.log.length ? state.log.join('   ·   ') : '—';
     $('counts').textContent = counts(state.patch);
     if (state.selection.kind !== 'none') inspector.show(state.patch, state.selection);
@@ -867,6 +948,7 @@ function boot() {
   showEnvironmentWarning();
   buildSlotPicker();
   syncMidi();
+  syncMidiIn();
 
   let initial = null;
   try {
@@ -894,4 +976,4 @@ boot();
 // The running singletons, so a browser check (or a console) can observe the
 // live app rather than a rebuilt copy of it. Importing this module again
 // returns the same instances; boot() does not run twice.
-export { state, audio, midi, engine, renderer };
+export { state, audio, midi, midiIn, engine, renderer };

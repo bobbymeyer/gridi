@@ -123,6 +123,7 @@ button { cursor: pointer; background: none; border: 0; }
 .mod:last-child { border-right: 0; }
 .mod--grow { flex: 1; }
 .mod--right { margin-left: auto; }
+.mod:last-child { border-right: 0; }
 .mod__row { display: flex; align-items: center; gap: 6px; }
 
 /* Transport ---------------------------------------------------------------- */
@@ -724,8 +725,21 @@ input[type="checkbox"]:checked::after {
 
 .foot b { color: var(--ink); font-weight: 700; }
 .foot__sep { width: 1px; height: 16px; background: var(--rule); opacity: 0.4; }
-.foot__log { flex: 1; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.foot__log { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .foot__dot { width: 8px; height: 8px; background: var(--ink-soft); }
+
+.foot__level {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+
+.foot__level input[type="range"] { width: 84px; height: 14px; }
+.foot__level input[type="range"]::-webkit-slider-runnable-track { height: 12px; }
+.foot__level input[type="range"]::-webkit-slider-thumb { height: 12px; margin-top: -2px; }
+.foot__level input[type="range"]::-moz-range-track { height: 12px; }
+.foot__level input[type="range"]::-moz-range-thumb { height: 12px; }
 .foot__dot[data-on="true"] { background: var(--red); }
 
 /* --------------------------------------------------------------- misc ---- */

@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 168 unit tests, no dependencies
+npm test           # 196 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -59,6 +59,7 @@ Windows — and have the DAW listen on it. There is no direct app-to-app route.
 | Node | What it does |
 |---|---|
 | **Pulse** | Root clock. Emits on a beat at project BPM, and owns the feel: division, swing, polyrhythm ratio, humanise and Euclidean gating. Feel lives here, never in the grid geometry. |
+| **MIDI In** | A note played on an attached keyboard sends a pulse from here. The pitch can retune everything downstream, transpose it, or be ignored. |
 | **Split** | Sends one pulse down every outgoing line at once. Optional stagger for flams. |
 | **Logic** | Coincidence gate. Fires when pulses line up inside a window: AND, OR, XOR or N-of. |
 | **Chance** | Lets a pulse through a set percentage of the time. Drift mode nudges the odds after each result. |
@@ -135,6 +136,27 @@ instead, remembered between sessions and dropped when the device disappears.
 Clock goes to every output set to receive it, and each has its own **Clk** toggle
 for gear that runs on its own clock. The same pitch and channel on two devices
 are two separate notes, tracked separately.
+
+**Gridi can follow someone else's clock.** Pick an input device and press
+**Sync**, and the incoming MIDI clock drives the grid instead of the project
+tempo: Start rolls the transport, Stop halts it, Continue resumes, and Song
+Position says where. The patch's own BPM is left alone, so unsyncing returns to
+it.
+
+Sending clock is arithmetic; receiving it is estimation. Pulses arrive 24 to the
+quarter note over a transport that jitters, so tempo and phase are recovered
+separately. The tempo is the mean of recent intervals *after* a median has
+thrown out the ones that cannot be trusted — the median alone reads a quantised
+stream wrong, because USB MIDI is polled about once a millisecond and a 27.78ms
+interval arrives as a run of 28s, which reads 89.3bpm from a master running at
+90. The phase is corrected a fraction at a time, because snapping to the master
+24 times a quarter note would stutter. Measured against a master at 90bpm:
+tempo read 90.25, and the grid sat a median of 7ms from it.
+
+A keyboard is another kind of source. A **MIDI In** node emits a pulse when a
+note arrives, and the pitch can retune everything downstream, transpose it, or
+be ignored — so a patch can be played rather than only started. Played notes
+need the transport running.
 
 **Param nodes send control changes.** Set a Param node's scope to CC and it
 sends its value as a controller instead of changing something in the app — a
@@ -344,7 +366,6 @@ Dark mode included, because nobody performs under a white screen.
 - MIDI clock in/out and external sync.
 - Pitch bend, aftertouch and program change. Control change is the only message
   a Param node sends.
-- MIDI in, for external clock or for triggering pulses from a keyboard.
 - An LFO. Modulation is step-wise today: a Param node changes a value when a
   pulse arrives, so filter sweeps and vibrato come out as staircases.
 - Filter types beyond low-pass.

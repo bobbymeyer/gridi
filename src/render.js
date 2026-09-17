@@ -42,6 +42,13 @@ export function nodeReadout(node, patch) {
         : `${feel} · CH ${p.channel}`;
       return { primary, secondary, muted: !p.running };
     }
+    case 'input': {
+      const labels = { key: 'SETS KEY', transpose: 'TRANSPOSE', none: 'GATE' };
+      return {
+        primary: p.listen === 0 ? 'OMNI' : `CH ${p.listen}`,
+        secondary: labels[p.sets] ?? 'GATE',
+      };
+    }
     case 'split': {
       const n = outgoing(patch, node.id).length;
       return { primary: 'ALL', secondary: `${n} BRANCH${n === 1 ? '' : 'ES'}` };

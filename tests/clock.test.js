@@ -212,11 +212,15 @@ test('scheduled intervals are exact, not recomputed per message', () => {
   const a = midi.toMidiTime(0.5);
   spin(2);
   const b = midi.toMidiTime(1.0);
-  assert.equal(b - a, 500, 'half a second apart, exactly');
+  // Exact to double precision, not to the bit: the offset is a large
+  // performance.now() reading, so adding to it rounds. Recomputing the offset
+  // per message — the bug this guards — put the interval out by milliseconds,
+  // which this tolerance is nowhere near.
+  assert.ok(Math.abs(b - a - 500) < 0.01, `half a second apart, got ${b - a}`);
 
   clock.t = 0.37; // the audio clock advances between calls
   const c = midi.toMidiTime(1.5);
-  assert.equal(c - b, 500);
+  assert.ok(Math.abs(c - b - 500) < 0.01, `got ${c - b}`);
 });
 
 test('the same moment always converts to the same timestamp', () => {
