@@ -2,32 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine, parseKeySteps, parseValues } from '../src/engine.js';
 import { createPatch, createNode, addNode, connect, createChannel } from '../src/model.js';
+import { fakeMidi, fakeAudio } from './helpers.js';
 
 /** Drives the engine with a fake clock so scheduling is deterministic. */
 function run(patch, seconds, { step = 0.02 } = {}) {
-  const audio = {
-    t: 0,
-    blips: [],
-    voices: [],
-    now() {
-      return this.t;
-    },
-    blip(note, vel, at, dur) {
-      this.blips.push({ note, vel, at, dur });
-    },
-    voice(params, note, vel, at, dur) {
-      this.voices.push({ note, vel, at, dur });
-    },
-    allOff() {},
-  };
-  const notes = [];
-  const midi = {
-    noteOn(ch, note, vel, at, dur) {
-      notes.push({ ch, note, vel, at, dur });
-    },
-    noteOff() {},
-    allOff() {},
-  };
+  const audio = fakeAudio();
+  const midi = fakeMidi();
   const pulses = [];
   const engine = new Engine({ getPatch: () => patch, audio, midi, onPulse: (p) => pulses.push(p) });
   engine.start();
@@ -38,9 +18,10 @@ function run(patch, seconds, { step = 0.02 } = {}) {
   // The look-ahead always schedules a little past the window; count only what
   // lands inside it so assertions do not depend on LOOKAHEAD.
   return {
-    notes: notes.filter((n) => n.at < seconds),
+    notes: midi.notes.filter((n) => n.at < seconds),
     pulses: pulses.filter((p) => p.arriveTime < seconds),
     audio,
+    midi,
     engine,
   };
 }

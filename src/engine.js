@@ -15,6 +15,7 @@ import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds } from './rhy
 import { outgoing, incoming, nodeById } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
+import { PPQN } from './midi.js';
 
 export const LOOKAHEAD = 0.14; // seconds of future we schedule each tick
 export const TICK_MS = 25;
@@ -66,6 +67,8 @@ export class Engine {
     this.governor = governor ?? null;
     this.onOverload = onOverload ?? (() => {});
     this.eventRate = new RateMeter();
+    this.clockPulse = 0; // index of the next clock pulse to schedule
+    this.clockOn = false; // whether clock was being sent as of the last tick
 
     this.running = false;
     this.queue = new EventQueue();
@@ -95,10 +98,20 @@ export class Engine {
     this.anchorTime = this.audio.now() + 0.08; // a beat of slack before bar one
     this.anchorBeat = 0;
     this.running = true;
+
+    // Tell the rig we are starting before the first pulse of clock reaches it.
+    this.clockPulse = 0;
+    this.clockOn = Boolean(patch.clockOut);
+    if (this.clockOn) {
+      this.midi.sendSongPosition(0, this.anchorTime - 0.002);
+      this.midi.sendStart(this.anchorTime - 0.001);
+    }
     this.tick();
   }
 
   stop() {
+    if (this.clockOn) this.midi.sendStop(this.audio.now());
+    this.clockOn = false;
     this.running = false;
     this.queue.clear();
     this.buckets.clear();
@@ -147,6 +160,7 @@ export class Engine {
     const now = this.audio.now();
     const horizon = now + LOOKAHEAD;
 
+    this.scheduleClock(patch, horizon, now);
     this.scheduleEmitters(patch, horizon);
     const processed = this.drain(patch, horizon);
     this.eventRate.add(now, processed);
@@ -155,6 +169,38 @@ export class Engine {
     // Note-offs are held until they are nearly due, so a retriggered note can
     // still be released first. This is the tick that lets them go.
     if (typeof this.midi.flush === 'function') this.midi.flush(now);
+  }
+
+  /**
+   * MIDI clock: 24 pulses per quarter note, on the same beat grid as the
+   * pulses, so a tempo change moves both together.
+   *
+   * Turning it on mid-song resumes properly rather than replaying the clock
+   * from bar one — song position, then Continue, which is what the messages
+   * are for.
+   */
+  scheduleClock(patch, horizon, now) {
+    const wanted = Boolean(patch.clockOut);
+    if (wanted !== this.clockOn) {
+      if (wanted) {
+        const beat = Math.max(0, this.timeToBeat(now));
+        this.clockPulse = Math.ceil(beat * PPQN);
+        this.midi.sendSongPosition(Math.floor(beat * 4), now);
+        this.midi.sendContinue(now);
+      } else {
+        this.midi.sendStop(now);
+      }
+      this.clockOn = wanted;
+    }
+    if (!this.clockOn) return;
+
+    // Bounded by tempo: 24 pulses a quarter note is 120 a second at 300bpm.
+    for (let guard = 0; guard < 512; guard += 1) {
+      const time = this.beatToTime(this.clockPulse / PPQN);
+      if (time > horizon) break;
+      this.midi.sendClock(Math.max(time, now));
+      this.clockPulse += 1;
+    }
   }
 
   scheduleEmitters(patch, horizon) {

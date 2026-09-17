@@ -54,6 +54,7 @@ export function createPatch(name = 'Untitled') {
     version: PATCH_VERSION,
     name,
     bpm: 112,
+    clockOut: true,
     root: 0,
     scale: 'minPent',
     seed: 1,
@@ -142,6 +143,7 @@ export function deserialize(text, onLimit) {
   const patch = createPatch(typeof raw.name === 'string' ? raw.name : 'Untitled');
 
   patch.bpm = clamp(Number(raw.bpm) || 112, 20, 300);
+  patch.clockOut = raw.clockOut !== false;
   patch.root = clamp(Math.round(Number(raw.root) || 0), 0, 11);
   patch.scale = SCALES[raw.scale] ? raw.scale : 'minPent';
   patch.seed = Number(raw.seed) || 1;

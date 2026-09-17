@@ -267,6 +267,7 @@ const inspector = new Inspector($('inspector'), {
 
 function syncHeader() {
   $('bpm').value = String(Math.round(state.patch.bpm));
+  $('clock-out').setAttribute('aria-pressed', String(state.patch.clockOut !== false));
   $('root').value = String(state.patch.root);
   $('scale').value = state.patch.scale;
   $('counts').textContent = counts(state.patch);
@@ -297,7 +298,8 @@ async function play() {
   $('play').setAttribute('aria-pressed', 'true');
   $('play').textContent = 'Stop';
   $('run-dot').dataset.on = 'true';
-  setStatus(midi.enabled ? 'Sending MIDI.' : 'Playing through the built-in voices.', 'Running.');
+  const clock = state.patch.clockOut !== false ? ' with clock' : '';
+  setStatus(midi.enabled ? `Sending MIDI${clock}.` : 'Playing through the built-in voices.', 'Running.');
 }
 
 function stop() {
@@ -609,6 +611,17 @@ $('file').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
+$('clock-out').addEventListener('click', () => {
+  state.patch.clockOut = state.patch.clockOut === false;
+  syncHeader();
+  save();
+  setStatus(
+    state.patch.clockOut
+      ? 'Sending MIDI clock, start and stop — receiving gear can follow this tempo.'
+      : 'MIDI clock off. Notes still go out; nothing will follow the tempo.',
+    'Clock.',
+  );
+});
 $('guard-close').addEventListener('click', hideGuard);
 $('play').addEventListener('click', toggleTransport);
 $('import').addEventListener('click', () => $('file').click());

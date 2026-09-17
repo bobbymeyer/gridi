@@ -6,6 +6,7 @@ import { LIMITS, SCOPE_NOTE, GUARDS, RateMeter, Governor } from '../src/limits.j
 import { Engine } from '../src/engine.js';
 import { MidiOut } from '../src/midi.js';
 import { createPatch, createNode, addNode, connect, deserialize } from '../src/model.js';
+import { fakeMidi, fakeAudio } from './helpers.js';
 
 /* ------------------------------------------------------------- rate meter */
 
@@ -94,9 +95,8 @@ test('every guard carries wording, and the scope note is about MIDI', () => {
 /* ------------------------------------------------------- engine, runaway */
 
 function harness(patch) {
-  const audio = { t: 0, now() { return this.t; }, blip() {}, voice() {}, allOff() {} };
-  let notes = 0;
-  const midi = { noteOn() { notes += 1; }, noteOff() {}, allOff() {}, flush() {} };
+  const audio = fakeAudio();
+  const midi = fakeMidi();
   const trips = [];
   const governor = new Governor((t) => trips.push(t));
   let stopped = false;
@@ -107,7 +107,7 @@ function harness(patch) {
     governor,
     onOverload: () => { stopped = true; },
   });
-  return { engine, audio, governor, trips, notes: () => notes, stopped: () => stopped };
+  return { engine, audio, midi, governor, trips, notes: () => midi.notes.length, stopped: () => stopped };
 }
 
 /** A splitter wired back into itself: one pulse becomes two, then four... */

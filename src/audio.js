@@ -127,6 +127,13 @@ export class AudioEngine {
       this.limiter.connect(this.ctx.destination);
     }
     if (this.ctx.state !== 'running') await this.ctx.resume();
+
+    // currentTime can still read zero here and jump once rendering actually
+    // begins. Anchoring the transport to that reading puts every MIDI timestamp
+    // out by the size of the jump, so wait for the clock to move first.
+    for (let i = 0; i < 20 && this.ctx.currentTime === 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
     return this.ctx.state === 'running';
   }
 

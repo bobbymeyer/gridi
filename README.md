@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 126 unit tests, no dependencies
+npm test           # 145 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -122,6 +122,20 @@ while you build it; the output is the MIDI.
 To reach a DAW, send to a virtual MIDI port — IAC Driver on macOS, loopMIDI on
 Windows — and have the DAW listen on it. There is no direct app-to-app route.
 
+**Clock goes out with the notes.** Gridi sends MIDI clock at the standard 24
+pulses per quarter note, with Start and Song Position when the transport rolls
+and Stop when it halts, so a DAW or hardware sequencer set to external sync
+follows this tempo rather than merely receiving its notes. Turning clock on
+part-way through sends Song Position and Continue instead of Start, so the
+receiver resumes where the song actually is. The **Clock** button in the header
+turns it off for rigs where something else is the master; a device not listening
+for clock ignores it either way.
+
+Clock and transport messages are never dropped by the throttle. A missing pulse
+reads as a stumble in tempo and a missing Stop leaves the receiver running,
+and at 24 pulses a quarter note they are bounded by tempo anyway — 120 a second
+even at 300bpm.
+
 **Note-offs are queued, not sent up front.** MIDI has no concept of "this note,
 specifically": a note-off is a channel and a pitch, nothing more. So if a pitch
 is retriggered on a channel before its first note ends, sending both note-offs
@@ -136,6 +150,16 @@ one-beat note from a 1/16 clock and each note sounds for a sixteenth, because
 two instances of one pitch on one channel cannot overlap. For real overlap, use
 different pitches, or put the parts on different channels — which is what a
 line carrying several channels is for.
+
+**The clocks are kept in step deliberately.** MIDI schedules in
+`performance.now()` while the scheduler works in `AudioContext` seconds, and the
+two do not tick alike: one advances continuously, the other in render quanta,
+and it jumps outright when the context starts. Converting per message therefore
+wobbles — measured that way, clock pulses jittered between 3ms and 27ms around a
+20.8ms target, which a receiver reads as an unsteady tempo. Gridi holds the
+offset between the clocks instead, resyncing hard when it is plainly wrong and
+otherwise nudging towards what it observes. The same pulses then measure
+20.71–20.91ms, and notes get the same benefit.
 
 Stop and panic cancel everything still queued at the port, release every note
 believed to be sounding, and send all-notes-off and all-sound-off on all
@@ -286,8 +310,6 @@ Dark mode included, because nobody performs under a white screen.
 
 - Node groups and sub-patches.
 - MIDI clock in/out and external sync.
-- MIDI clock out. There is no 0xF8 clock, start, stop or song-position, so a
-  receiving instrument cannot sync to Gridi's tempo — only respond to its notes.
 - CC output from Param nodes (they modulate in-app parameters only), and no
   pitch bend, aftertouch or program change.
 - One output port at a time. Channels are per line, but the device is global,
