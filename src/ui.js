@@ -8,6 +8,7 @@
 import { NODE_TYPES, NODE_TYPE_KEYS, MODULATABLE, typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES } from './music.js';
 import { channelSummary, createChannel, nodeById } from './model.js';
+import { SLOTS, asSlot } from './midi.js';
 import { clamp } from './util.js';
 
 const el = (tag, className, text) => {
@@ -396,15 +397,46 @@ export class Inspector {
     });
 
     if (line.channelMode === 'set') {
+      // The grid edits one output at a time, so the same channel number can be
+      // carried to two devices at once — which is the point of having several.
+      const slot = asSlot(this.channelSlot ?? line.channels[0]?.out);
+      this.channelSlot = slot;
+
+      const slotRow = makeRow('Output');
+      const slotSeg = el('div', 'seg');
+      const slotButtons = SLOTS.map((name) => {
+        const b = el('button', null, name);
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          this.channelSlot = name;
+          this.build(patch, { kind: 'line', id: line.id });
+        });
+        slotSeg.append(b);
+        return { name, b };
+      });
+      slotRow.control.append(slotSeg);
+      this.root.append(slotRow.row);
+      this.rows.push({
+        spec: { key: 'channelSlot' },
+        row: slotRow.row,
+        sync: () => {
+          for (const { name, b } of slotButtons) b.setAttribute('aria-pressed', String(name === slot));
+        },
+      });
+      const slotHint = el('p', 'row__hint', 'Bind A\u2013D to devices in the header. The grid below sets channels on this one.');
+      slotRow.row.append(slotHint);
+
       const grid = el('div', 'chan-grid');
       const chanButtons = [];
+      const onSlot = (ch) => line.channels.some((c) => asSlot(c.out) === slot && c.ch === ch);
       for (let ch = 1; ch <= 16; ch += 1) {
         const b = el('button', null, String(ch));
         b.type = 'button';
         b.addEventListener('click', () => {
-          const has = line.channels.some((c) => c.ch === ch);
-          const next = has ? line.channels.filter((c) => c.ch !== ch) : [...line.channels, createChannel(ch)];
-          next.sort((a, c) => a.ch - c.ch);
+          const next = onSlot(ch)
+            ? line.channels.filter((c) => !(asSlot(c.out) === slot && c.ch === ch))
+            : [...line.channels, createChannel(ch, slot)];
+          next.sort((a, c) => asSlot(a.out).localeCompare(asSlot(c.out)) || a.ch - c.ch);
           this.hooks.onChannels(line, next);
           this.build(patch, { kind: 'line', id: line.id });
         });
@@ -416,16 +448,28 @@ export class Inspector {
         spec: { key: 'channels' },
         row: grid,
         sync: () => {
-          for (const { ch, b } of chanButtons) {
-            b.setAttribute('aria-pressed', String(line.channels.some((c) => c.ch === ch)));
-          }
+          for (const { ch, b } of chanButtons) b.setAttribute('aria-pressed', String(onSlot(ch)));
         },
       });
 
       const list = el('div', 'chan-list');
       for (const chan of line.channels) {
         const item = el('div', 'chan-item');
-        item.append(el('b', null, String(chan.ch)));
+
+        const where = el('select');
+        for (const name of SLOTS) {
+          const opt = el('option', null, name);
+          opt.value = name;
+          where.append(opt);
+        }
+        where.value = asSlot(chan.out);
+        where.title = 'Which output this channel goes to';
+        where.addEventListener('change', () => {
+          chan.out = asSlot(where.value);
+          this.hooks.onChannels(line, line.channels);
+          this.build(patch, { kind: 'line', id: line.id });
+        });
+        item.append(where, el('b', null, String(chan.ch)));
 
         const tWrap = el('label');
         tWrap.append(el('span', null, 'Transp'));

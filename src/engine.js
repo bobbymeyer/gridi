@@ -15,7 +15,7 @@ import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds } from './rhy
 import { outgoing, incoming, nodeById } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
-import { PPQN } from './midi.js';
+import { PPQN, DEFAULT_SLOT } from './midi.js';
 
 export const LOOKAHEAD = 0.14; // seconds of future we schedule each tick
 export const TICK_MS = 25;
@@ -281,7 +281,7 @@ export class Engine {
   initialContext(patch, node) {
     const fromProject = node.params.scaleMode !== 'set';
     return {
-      channels: [{ ch: clamp(node.params.channel, 1, 16), transpose: 0, velocity: null }],
+      channels: [{ out: DEFAULT_SLOT, ch: clamp(node.params.channel, 1, 16), transpose: 0, velocity: null }],
       scale: fromProject ? patch.scale : node.params.scale,
       root: fromProject ? patch.root : node.params.root,
       velocity: node.params.velocity,
@@ -542,10 +542,19 @@ export class Engine {
       for (let r = 0; r < ratchet; r += 1) {
         const at = evt.time + r * slice;
         const dur = slice * 0.92;
-        if (node.params.midiOn) this.midi.noteOn(chan.ch, midiNote, vel, at, dur);
+        if (node.params.midiOn) {
+          this.midi.noteOn({
+            slot: chan.out,
+            channel: chan.ch,
+            note: midiNote,
+            velocity: vel,
+            at,
+            duration: dur,
+          });
+        }
         if (node.params.audition) this.audio.blip(midiNote, vel, at, dur);
       }
-      played.push({ ch: chan.ch, note: midiNote, vel });
+      played.push({ out: chan.out, ch: chan.ch, note: midiNote, vel });
     }
     this.onFire({ nodeId: node.id, time: evt.time, kind: 'note', notes: played });
     this.send(patch, node.id, ctx, evt.time, evt.hops);

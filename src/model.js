@@ -10,6 +10,7 @@ import { SCALES } from './music.js';
 import { DIVISIONS } from './rhythm.js';
 import { isWaveform } from './voice.js';
 import { LIMITS } from './limits.js';
+import { asSlot, DEFAULT_SLOT } from './midi.js';
 
 export const PATCH_VERSION = 1;
 
@@ -28,8 +29,8 @@ export function createNode(type, col, row, params = {}) {
  * A channel carried by a line. Per-channel transpose and velocity mean one line
  * can feed, say, a bass part and a doubling pad with different weight.
  */
-export function createChannel(ch = 1) {
-  return { ch: clamp(Math.round(ch), 1, 16), transpose: 0, velocity: null };
+export function createChannel(ch = 1, out = DEFAULT_SLOT) {
+  return { out: asSlot(out), ch: clamp(Math.round(ch), 1, 16), transpose: 0, velocity: null };
 }
 
 export function createLine(from, to, overrides = {}) {
@@ -112,11 +113,26 @@ export function connect(patch, fromId, toId, overrides) {
   return line;
 }
 
-/** Display string for a line's channel set: "CH 1" / "CH 1,4,9" / "INHERIT". */
+/**
+ * Display string for a line's channel set. Channels are grouped by the output
+ * they go to, and the slot letter is only shown once more than one is in play,
+ * so the ordinary single-device case stays quiet: "CH 1,4" against
+ * "A:1,4 B:10".
+ */
 export function channelSummary(line) {
   if (line.channelMode !== 'set') return 'INHERIT';
   if (line.channels.length === 0) return 'NONE';
-  return `CH ${line.channels.map((c) => c.ch).join(',')}`;
+  const bySlot = new Map();
+  for (const c of line.channels) {
+    const slot = asSlot(c.out);
+    if (!bySlot.has(slot)) bySlot.set(slot, []);
+    bySlot.get(slot).push(c.ch);
+  }
+  if (bySlot.size === 1) return `CH ${[...bySlot.values()][0].join(',')}`;
+  return [...bySlot.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slot, chans]) => `${slot}:${chans.join(',')}`)
+    .join(' ');
 }
 
 export function scaleSummary(patchOrLine) {
@@ -189,6 +205,8 @@ export function deserialize(text, onLimit) {
       line.channels = l.channels
         .filter((c) => c && Number.isFinite(Number(c.ch)))
         .map((c) => ({
+          // Older patches predate output slots and belong on the first one.
+          out: asSlot(c.out),
           ch: clamp(Math.round(Number(c.ch)), 1, 16),
           transpose: clamp(Math.round(Number(c.transpose) || 0), -48, 48),
           velocity: c.velocity == null ? null : clamp(Math.round(Number(c.velocity)), 1, 127),

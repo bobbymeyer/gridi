@@ -6,7 +6,7 @@ import { LIMITS, SCOPE_NOTE, GUARDS, RateMeter, Governor } from '../src/limits.j
 import { Engine } from '../src/engine.js';
 import { MidiOut } from '../src/midi.js';
 import { createPatch, createNode, addNode, connect, deserialize } from '../src/model.js';
-import { fakeMidi, fakeAudio } from './helpers.js';
+import { fakeMidi, fakeAudio, wiredMidi } from './helpers.js';
 
 /* ------------------------------------------------------------- rate meter */
 
@@ -177,18 +177,17 @@ test('an ordinary patch never trips a guard', () => {
 
 /* ----------------------------------------------------------- midi ceiling */
 
-test('a MIDI flood is throttled, but never by dropping note-offs', () => {
-  const port = { sends: [], send(d, ts) { this.sends.push({ d: [...d], ts }); }, clear() {} };
-  const clock = { now: () => 0 };
-  const midi = new MidiOut(clock);
-  midi.access = { outputs: new Map([['p', port]]) };
-  midi.outputId = 'p';
+test('a MIDI flood is throttled, but never by dropping note-offs', async () => {
+  const { midi, ports } = await wiredMidi();
+  const port = ports.A;
   const trips = [];
   midi.governor = new Governor((t) => trips.push(t));
 
-  for (let i = 0; i < 4000; i += 1) midi.noteOn(1 + (i % 16), 20 + (i % 100), 100, 0, 0.1);
+  for (let i = 0; i < 4000; i += 1) {
+    midi.noteOn({ channel: 1 + (i % 16), note: 20 + (i % 100), velocity: 100, at: 0, duration: 0.1 });
+  }
 
-  const ons = port.sends.filter((s) => (s.d[0] & 0xf0) === 0x90).length;
+  const ons = port.sends.filter((s) => (s.data[0] & 0xf0) === 0x90).length;
   assert.ok(ons < 4000, 'the surplus was dropped');
   assert.ok(ons <= LIMITS.midiPerSecond, `${ons} note-ons in a second`);
   assert.ok(trips.some((t) => t.kind === 'midi'), 'and it was reported');
@@ -196,7 +195,7 @@ test('a MIDI flood is throttled, but never by dropping note-offs', () => {
   // Everything accepted must still be released, or notes hang on the device.
   // Some releases go out during the loop, when a pitch is retriggered.
   midi.flush(10);
-  const offs = port.sends.filter((s) => (s.d[0] & 0xf0) === 0x80).length;
+  const offs = port.sends.filter((s) => (s.data[0] & 0xf0) === 0x80).length;
   assert.equal(offs, ons, 'every note that sounded gets its release');
   assert.equal(midi.sounding.size, 0, 'nothing left hanging on the device');
   assert.equal(midi.pendingOffs.length, 0);

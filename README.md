@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 145 unit tests, no dependencies
+npm test           # 153 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -122,6 +122,20 @@ while you build it; the output is the MIDI.
 To reach a DAW, send to a virtual MIDI port — IAC Driver on macOS, loopMIDI on
 Windows — and have the DAW listen on it. There is no direct app-to-app route.
 
+**Four outputs, named A to D.** Bind each to a device in the header, and route
+channels to them per line, so one pulse can play a DAW on channel 1 and a drum
+machine on channel 10 at the same instant. Each device gets its own throttle
+budget, so a busy one does not gag the rest, and panic silences all of them.
+
+A patch stores the *slot letter*, never the device. Web MIDI ids are assigned by
+the browser and differ between machines, so a patch that named devices directly
+would arrive somewhere else pointing at nothing. Bindings live on the machine
+instead, remembered between sessions and dropped when the device disappears.
+
+Clock goes to every output set to receive it, and each has its own **Clk** toggle
+for gear that runs on its own clock. The same pitch and channel on two devices
+are two separate notes, tracked separately.
+
 **Clock goes out with the notes.** Gridi sends MIDI clock at the standard 24
 pulses per quarter note, with Start and Song Position when the transport rolls
 and Stop when it halts, so a DAW or hardware sequencer set to external sync
@@ -173,7 +187,7 @@ let it, Gridi caps the damage and says what happened.
 | Limit | Ceiling | What happens past it |
 |---|---|---|
 | Scheduler events | 2000 per tick, 8000 per second sustained | In-flight pulses are dropped; repeated overloads stop the transport |
-| MIDI messages | 2000 per second | Surplus note-ons are dropped — never note-offs |
+| MIDI messages | 2000 per second, per device | Surplus note-ons are dropped — never note-offs |
 | Sounding voices | 64 across the patch | The oldest are released early |
 | Patch size | 400 nodes, 800 lines | The remainder is left out on load |
 
@@ -201,7 +215,7 @@ state is what the pulse picks up as it passes:
 
 | Property | Behaviour |
 |---|---|
-| **MIDI channels** | A line carries a *set* of channels, each with its own transpose and velocity. One pulse down that line fans out across all of them at once — splitter behaviour baked into the line. |
+| **MIDI channels** | A line carries a *set* of channels, each with its own output, transpose and velocity. One pulse down that line fans out across all of them at once, across devices as readily as across channels — splitter behaviour baked into the line. |
 | **Scale and key** | Set on the line and cascading to everything it feeds, rather than configured per node. |
 | **Delay** | In beats. The only thing that shifts timing. |
 | **Mute** | Stops passing pulses without unpatching. |
@@ -312,8 +326,6 @@ Dark mode included, because nobody performs under a white screen.
 - MIDI clock in/out and external sync.
 - CC output from Param nodes (they modulate in-app parameters only), and no
   pitch bend, aftertouch or program change.
-- One output port at a time. Channels are per line, but the device is global,
-  so several instruments mean one port and channel splits at the far end.
 - MIDI in, for external clock or for triggering pulses from a keyboard.
 - An LFO. Modulation is step-wise today: a Param node changes a value when a
   pulse arrives, so filter sweeps and vibrato come out as staircases.

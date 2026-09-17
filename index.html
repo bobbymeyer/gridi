@@ -43,11 +43,13 @@
     </div>
 
     <div class="mod mod--grow">
-      <span class="micro">MIDI output</span>
+      <span class="micro">MIDI outputs</span>
       <div class="mod__row">
         <button class="btn" id="midi-enable">Enable MIDI</button>
-        <select class="field" id="midi-out" aria-label="MIDI output port" style="max-width:190px" disabled></select>
-        <button class="btn" id="clock-out" aria-pressed="true" title="Send MIDI clock, start and stop so the receiving gear follows Gridi's tempo">Clock</button>
+        <div class="seg" id="slot-picker" role="group" aria-label="Output slot"></div>
+        <select class="field" id="midi-out" aria-label="Device for the selected output" style="max-width:130px" disabled></select>
+        <button class="btn" id="slot-clock" aria-pressed="true" title="Send clock to this output">Clk A</button>
+        <button class="btn" id="clock-out" aria-pressed="true" title="Send MIDI clock, start and stop at all, so receiving gear follows Gridi's tempo">Clock</button>
         <button class="btn btn--red" id="panic" title="All notes off">Panic</button>
       </div>
     </div>
@@ -57,16 +59,6 @@
       <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Output level" style="width:92px">
     </div>
 
-    <div class="mod">
-      <span class="micro">Patch</span>
-      <div class="mod__row">
-        <button class="btn" id="new">New</button>
-        <button class="btn" id="demo">Demo</button>
-        <button class="btn" id="export">Save</button>
-        <button class="btn" id="import">Open</button>
-        <button class="btn" id="theme" title="Toggle theme">Dark</button>
-      </div>
-    </div>
   </header>
 
   <div class="guard" id="guard" hidden role="status">
@@ -87,6 +79,16 @@
         Drag from a node's right edge onto another node to patch them.
         Lines carry the channels and the key.
       </p>
+      <div class="rail__foot">
+        <span class="micro">Patch</span>
+        <div class="rail__buttons">
+          <button class="btn" id="new">New</button>
+          <button class="btn" id="demo">Demo</button>
+          <button class="btn" id="export">Save</button>
+          <button class="btn" id="import">Open</button>
+          <button class="btn" id="theme" title="Toggle theme">Dark</button>
+        </div>
+      </div>
     </nav>
 
     <section class="stage">

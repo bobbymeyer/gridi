@@ -81,6 +81,7 @@ button { cursor: pointer; background: none; border: 0; }
 .head {
   display: flex;
   align-items: stretch;
+  flex-wrap: wrap;
   border-bottom: var(--rule-w) solid var(--rule);
   background: var(--paper);
 }
@@ -93,7 +94,7 @@ button { cursor: pointer; background: none; border: 0; }
   border-right: var(--rule-w) solid var(--rule);
   background: var(--red);
   color: #fff;
-  min-width: 168px;
+  min-width: 140px;
 }
 
 .head__mark b {
@@ -115,7 +116,7 @@ button { cursor: pointer; background: none; border: 0; }
   flex-direction: column;
   gap: 5px;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 8px 11px;
   border-right: 1px solid var(--rule);
 }
 
@@ -239,6 +240,7 @@ input.field[type="number"] { text-transform: none; }
   color: var(--ink);
 }
 
+.btn { white-space: nowrap; }
 .btn:hover { background: var(--ink); color: var(--paper); }
 .btn[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
 .btn--red:hover { background: var(--red); border-color: var(--red); color: #fff; }
@@ -247,7 +249,8 @@ input.field[type="number"] { text-transform: none; }
 .seg { display: flex; }
 .seg > button {
   height: 24px;
-  padding: 0 9px;
+  padding: 0 8px;
+  white-space: nowrap;
   border: var(--rule-w) solid var(--rule);
   border-left-width: 0;
   font: 600 10px/1 var(--font);
@@ -263,6 +266,14 @@ input.field[type="number"] { text-transform: none; }
    between them. A four-way choice then fits as readily as a two-way one. */
 .row__control .seg { flex: 1; min-width: 0; }
 .row__control .seg > button { flex: 1; min-width: 0; padding: 0 4px; }
+
+#slot-picker > button { padding: 0 7px; }
+
+/* A slot button shows at a glance whether a device sits behind it. */
+.seg > button.slot--bound { border-bottom-width: 4px; }
+.seg > button[aria-pressed="true"].slot--bound { border-bottom-color: var(--blue); }
+.btn[disabled] { opacity: 0.4; cursor: default; }
+.btn[disabled]:hover { background: var(--paper); color: var(--ink); }
 
 /* Range: a bar graph, not a slider ---------------------------------------- */
 
@@ -391,6 +402,20 @@ input[type="checkbox"]:checked::after {
   color: var(--ink-soft);
   margin-top: 3px;
 }
+
+.rail__foot {
+  padding: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.rail__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.rail__buttons .btn:last-child { grid-column: 1 / -1; }
 
 .rail__note {
   padding: 10px 12px;
@@ -569,7 +594,7 @@ input[type="checkbox"]:checked::after {
 
 .chan-item {
   display: grid;
-  grid-template-columns: 30px 1fr 1fr;
+  grid-template-columns: 34px 24px 1fr 1fr;
   gap: 6px;
   align-items: end;
   padding: 6px 0;
@@ -590,6 +615,19 @@ input[type="checkbox"]:checked::after {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+.chan-item select {
+  height: 22px;
+  min-width: 0;
+  padding: 0 2px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  font: 700 10px/1 var(--font);
+  appearance: none;
+  text-align: center;
+}
+
+.chan-item select:focus { outline: 0; background: var(--yellow); color: #111; }
 
 .chan-item input {
   width: 100%;
@@ -707,5 +745,4 @@ input[type="checkbox"]:checked::after {
 
 @media (max-width: 1080px) {
   .body { grid-template-columns: 132px 1fr 236px; }
-  .head { flex-wrap: wrap; }
 }

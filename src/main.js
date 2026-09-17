@@ -1,7 +1,7 @@
 // Application wiring: input, transport, persistence, and the frame loop.
 
 import { AudioEngine } from './audio.js';
-import { MidiOut, MIDI_SUPPORTED } from './midi.js';
+import { MidiOut, MIDI_SUPPORTED, SLOTS } from './midi.js';
 import { Engine, TICK_MS } from './engine.js';
 import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
@@ -20,6 +20,9 @@ import { Governor, LIMITS, SCOPE_NOTE } from './limits.js';
 
 const STORAGE_KEY = 'gridi.patch.v1';
 const THEME_KEY = 'gridi.theme';
+// Device bindings live on the machine, not in the patch: a patch names output
+// slots, and each machine decides what sits behind them.
+const OUTPUTS_KEY = 'gridi.outputs.v1';
 const MAX_HISTORY = 60;
 
 const $ = (id) => document.getElementById(id);
@@ -614,6 +617,7 @@ $('file').addEventListener('change', async (e) => {
 $('clock-out').addEventListener('click', () => {
   state.patch.clockOut = state.patch.clockOut === false;
   syncHeader();
+  syncMidi();
   save();
   setStatus(
     state.patch.clockOut
@@ -665,21 +669,59 @@ $('theme').addEventListener('click', () => {
 
 /* --------------------------------------------------------------------- MIDI */
 
+/** Which slot the header controls are editing. */
+let editingSlot = SLOTS[0];
+
+function buildSlotPicker() {
+  const holder = $('slot-picker');
+  holder.innerHTML = '';
+  for (const slot of SLOTS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = slot;
+    btn.title = `Output ${slot}`;
+    btn.addEventListener('click', () => {
+      editingSlot = slot;
+      syncMidi();
+    });
+    holder.append(btn);
+  }
+}
+
 function syncMidi() {
-  const select = $('midi-out');
-  select.innerHTML = '';
+  for (const [i, btn] of [...$('slot-picker').children].entries()) {
+    const slot = SLOTS[i];
+    btn.setAttribute('aria-pressed', String(slot === editingSlot));
+    btn.classList.toggle('slot--bound', Boolean(midi.portFor(slot)));
+    const device = midi.deviceName(slot);
+    btn.title = device ? `Output ${slot}: ${device}` : `Output ${slot}: nothing bound`;
+  }
+
+  const picker = $('midi-out');
+  picker.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = '— none —';
+  picker.append(none);
   for (const out of midi.outputs) {
     const opt = document.createElement('option');
     opt.value = out.id;
     opt.textContent = out.manufacturer ? `${out.name} — ${out.manufacturer}` : out.name;
-    select.append(opt);
+    picker.append(opt);
   }
-  select.disabled = midi.outputs.length === 0;
-  if (midi.outputId) select.value = midi.outputId;
+  picker.disabled = midi.outputs.length === 0;
+  picker.value = midi.slots.get(editingSlot)?.portId ?? '';
+
+  const clockBtn = $('slot-clock');
+  clockBtn.textContent = `Clk ${editingSlot}`;
+  clockBtn.setAttribute('aria-pressed', String(midi.sendsClock(editingSlot)));
+  clockBtn.disabled = state.patch.clockOut === false;
+  clockBtn.title = `Send clock to output ${editingSlot}`;
 
   const btn = $('midi-enable');
+  const bound = midi.boundSlots.length;
   if (midi.status === 'ready') {
-    btn.textContent = 'MIDI On';
+    btn.textContent = bound > 1 ? `MIDI \u00d7${bound}` : 'MIDI On';
     btn.setAttribute('aria-pressed', 'true');
   } else if (midi.status === 'no-ports') {
     btn.textContent = 'No ports';
@@ -688,6 +730,24 @@ function syncMidi() {
     btn.textContent = 'Enable MIDI';
     btn.setAttribute('aria-pressed', 'false');
   }
+  saveOutputs();
+}
+
+function saveOutputs() {
+  try {
+    localStorage.setItem(OUTPUTS_KEY, JSON.stringify(midi.bindings()));
+  } catch {
+    /* private mode, or quota */
+  }
+}
+
+function restoreOutputs() {
+  try {
+    const stored = localStorage.getItem(OUTPUTS_KEY);
+    if (stored) midi.restoreBindings(JSON.parse(stored));
+  } catch {
+    /* ignore */
+  }
 }
 
 midi.onChange = syncMidi;
@@ -695,7 +755,9 @@ midi.onChange = syncMidi;
 $('midi-enable').addEventListener('click', async () => {
   const ok = await midi.enable();
   if (ok && midi.outputs.length) {
-    setStatus(`Sending to ${midi.outputs[0].name}.`, 'MIDI ready.');
+    restoreOutputs();
+    const bound = midi.boundSlots.map((s) => `${s}: ${midi.deviceName(s)}`).join(' · ');
+    setStatus(`${bound}. Pick A–D to bind the others.`, 'MIDI ready.');
   } else if (ok) {
     setStatus('No MIDI outputs found. Open a virtual port (IAC on macOS, loopMIDI on Windows) and try again.', 'MIDI on.');
   } else if (midi.status === 'unsupported') {
@@ -708,9 +770,22 @@ $('midi-enable').addEventListener('click', async () => {
 });
 
 $('midi-out').addEventListener('change', (e) => {
-  midi.setOutput(e.target.value);
-  const name = midi.outputs.find((o) => o.id === e.target.value)?.name;
-  setStatus(`Sending to ${name}.`, 'MIDI.');
+  midi.bind(editingSlot, e.target.value || null);
+  const name = midi.deviceName(editingSlot);
+  setStatus(
+    name ? `Output ${editingSlot} goes to ${name}.` : `Output ${editingSlot} is not bound to anything.`,
+    'MIDI.',
+  );
+});
+
+$('slot-clock').addEventListener('click', () => {
+  midi.setSlotClock(editingSlot, !midi.sendsClock(editingSlot));
+  setStatus(
+    midi.sendsClock(editingSlot)
+      ? `Output ${editingSlot} receives clock.`
+      : `Output ${editingSlot} will not receive clock.`,
+    'Clock.',
+  );
 });
 
 /* --------------------------------------------------------------- boot loop */
@@ -779,6 +854,7 @@ function boot() {
 
   populateKeySelects();
   showEnvironmentWarning();
+  buildSlotPicker();
   syncMidi();
 
   let initial = null;

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { Engine } from '../src/engine.js';
 import { MidiOut, PPQN, CLOCK, START, CONTINUE, STOP, SONG_POSITION } from '../src/midi.js';
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { fakeMidi, fakeAudio } from './helpers.js';
+import { fakeMidi, fakeAudio, wiredMidi } from './helpers.js';
 
 function rig(patch, seconds, { step = 0.02, mutate } = {}) {
   const audio = fakeAudio();
@@ -140,68 +140,65 @@ test('clock runs even with nothing patched and no emitter active', () => {
 
 /* ------------------------------------------------------- the bytes sent */
 
-function port() {
-  const sends = [];
-  return {
-    sends,
-    send(d, ts) { sends.push({ d: [...d], ts: ts ?? 0 }); },
-    clear() {},
-    status(i) { return sends[i].d[0]; },
-  };
-}
-
-function wired() {
-  const p = port();
-  const midi = new MidiOut({ now: () => 0 });
-  midi.access = { outputs: new Map([['p', p]]) };
-  midi.outputId = 'p';
-  return { midi, p };
-}
-
-test('the real-time messages are the bytes the spec says', () => {
-  const { midi, p } = wired();
+test('the real-time messages are the bytes the spec says', async () => {
+  const { midi, ports } = await wiredMidi();
+  const p = { sends: ports.A.sends.map((s) => ({ d: s.data })) };
   midi.sendClock(0);
   midi.sendStart(0);
   midi.sendContinue(0);
   midi.sendStop(0);
-  assert.deepEqual(p.sends.map((s) => s.d), [[CLOCK], [START], [CONTINUE], [STOP]]);
+  assert.deepEqual(ports.A.sends.map((s) => s.data), [[CLOCK], [START], [CONTINUE], [STOP]]);
   assert.deepEqual([CLOCK, START, CONTINUE, STOP], [0xf8, 0xfa, 0xfb, 0xfc]);
 });
 
-test('song position is a 14-bit value, low byte first', () => {
-  const { midi, p } = wired();
+test('song position is a 14-bit value, low byte first', async () => {
+  const { midi, ports } = await wiredMidi();
   midi.sendSongPosition(0, 0);
   midi.sendSongPosition(1, 0);
   midi.sendSongPosition(128, 0);
   midi.sendSongPosition(16383, 0);
   midi.sendSongPosition(99999, 0); // clamped
-  assert.deepEqual(p.sends.map((s) => s.d), [
+  assert.deepEqual(ports.A.sends.map((s) => s.data), [
     [SONG_POSITION, 0, 0],
     [SONG_POSITION, 1, 0],
     [SONG_POSITION, 0, 1],
     [SONG_POSITION, 127, 127],
     [SONG_POSITION, 127, 127],
   ]);
-  for (const send of p.sends) {
-    assert.ok(send.d[1] <= 127 && send.d[2] <= 127, 'data bytes have the top bit clear');
+  for (const send of ports.A.sends) {
+    assert.ok(send.data[1] <= 127 && send.data[2] <= 127, 'data bytes have the top bit clear');
   }
 });
 
-test('clock is never dropped by the note throttle', () => {
-  const { midi, p } = wired();
+test('clock reaches every device set to receive it', async () => {
+  const { midi, ports } = await wiredMidi({ slots: { A: 'iac', B: 'drums', C: 'synth' } });
+  midi.setSlotClock('C', false);
+  ports.C.sends.length = 0;
+  midi.sendStart(0);
+  midi.sendClock(0);
+  assert.equal(ports.A.sends.length, 2, 'A follows');
+  assert.equal(ports.B.sends.length, 2, 'B follows too');
+  assert.equal(ports.C.sends.length, 0, 'C was told not to');
+});
+
+test('clock is never dropped by the note throttle', async () => {
+  const { midi, ports } = await wiredMidi();
   // Flood past the note ceiling first.
-  for (let i = 0; i < 4000; i += 1) midi.noteOn(1, 60 + (i % 40), 100, 0, 0.05);
-  const before = p.sends.length;
+  for (let i = 0; i < 4000; i += 1) {
+    midi.noteOn({ channel: 1, note: 60 + (i % 40), velocity: 100, at: 0, duration: 0.05 });
+  }
+  const before = ports.A.sends.length;
   for (let i = 0; i < 100; i += 1) midi.sendClock(0);
-  const clocks = p.sends.slice(before).filter((s) => s.d[0] === CLOCK).length;
+  const clocks = ports.A.sends.slice(before).filter((s) => s.data[0] === CLOCK).length;
   assert.equal(clocks, 100, 'a missing pulse reads as a tempo stumble, so none may be dropped');
 });
 
-test('clock is sent only when a port is open', () => {
-  const { midi, p } = wired();
-  midi.outputId = null;
+test('clock is sent only when a device is bound', async () => {
+  const { midi, ports } = await wiredMidi();
+  midi.bind('A', null);
+  ports.A.sends.length = 0;
   assert.doesNotThrow(() => { midi.sendClock(0); midi.sendStart(0); midi.sendSongPosition(4, 0); });
-  assert.equal(p.sends.length, 0);
+  assert.equal(ports.A.sends.length, 0);
 });
 
 /* --------------------------------------------------------- the time base */
@@ -250,13 +247,11 @@ test('small differences are smoothed rather than followed exactly', () => {
   assert.ok(moved > 0 && moved < 5, `moved ${moved}ms towards it, not all the way`);
 });
 
-test('changing port starts the time base again', () => {
-  const midi = new MidiOut({ now: () => 0 });
-  midi.access = { outputs: new Map([['a', port()], ['b', port()]]) };
-  midi.outputId = 'a';
+test('rebinding a slot starts the time base again', async () => {
+  const { midi } = await wiredMidi({ slots: { A: 'a', B: 'b' } });
   midi.toMidiTime(0);
   assert.ok(midi.timeOffset !== null);
-  midi.setOutput('b');
+  midi.bind('A', 'b');
   assert.equal(midi.timeOffset, null);
 });
 

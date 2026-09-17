@@ -68,7 +68,7 @@ test('a patch round trips through JSON intact', () => {
   const p = demoPatch();
   const line = p.lines[2];
   line.channelMode = 'set';
-  line.channels = [createChannel(3), { ch: 7, transpose: -12, velocity: 44 }];
+  line.channels = [createChannel(3), { out: 'B', ch: 7, transpose: -12, velocity: 44 }];
   line.scaleMode = 'set';
   line.scale = 'dorian';
   line.root = 2;
@@ -82,8 +82,8 @@ test('a patch round trips through JSON intact', () => {
   const restored = back.lines[2];
   assert.equal(restored.channelMode, 'set');
   assert.deepEqual(restored.channels, [
-    { ch: 3, transpose: 0, velocity: null },
-    { ch: 7, transpose: -12, velocity: 44 },
+    { out: 'A', ch: 3, transpose: 0, velocity: null },
+    { out: 'B', ch: 7, transpose: -12, velocity: 44 },
   ]);
   assert.equal(restored.scale, 'dorian');
   assert.equal(restored.delay, 0.75);
