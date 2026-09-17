@@ -8,9 +8,10 @@ import {
   adsrPoints, filterPoints, envelopeEnd, oscHz, oscMix, midiToHz, isWaveform,
   stealTargets, SILENCE,
 } from './voice.js';
+import { LIMITS } from './limits.js';
 
 /** Ceiling across the whole patch, whatever the per-node limits add up to. */
-export const GLOBAL_VOICE_CAP = 64;
+export const GLOBAL_VOICE_CAP = LIMITS.voices;
 /** Long enough not to click, short enough to free the voice straight away. */
 const STEAL_FADE = 0.012;
 
@@ -103,6 +104,7 @@ export class AudioEngine {
     this.volume = 0.8;
     this.live = new Set(); // scheduled sources, so panic can stop them
     this.voices = []; // sounding Voice-node notes, for voice stealing
+    this.governor = null;
   }
 
   /** Must be called from a user gesture. Browsers start contexts suspended. */
@@ -198,6 +200,9 @@ export class AudioEngine {
     if (!this.ctx) return;
     const t = Math.max(at, this.now());
     const cap = clamp(Math.round(params.voices ?? 8), 1, 32);
+    // Per-node stealing is ordinary musical behaviour; hitting the patch-wide
+    // ceiling means the synth is being asked to do a job it is not here for.
+    if (this.voices.length >= GLOBAL_VOICE_CAP) this.governor?.trip('voices', t);
     for (const victim of stealTargets(this.voices, owner, cap, GLOBAL_VOICE_CAP)) {
       this.steal(victim, t);
     }

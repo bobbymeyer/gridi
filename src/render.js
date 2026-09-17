@@ -11,6 +11,7 @@ import { SCALES, NOTE_NAMES } from './music.js';
 import { WAVE_LABELS } from './voice.js';
 import { outgoing, incoming, channelSummary } from './model.js';
 import { clamp } from './util.js';
+import { LIMITS } from './limits.js';
 
 const FIRE_MS = 220;
 const PULSE_MIN = 0.12; // seconds of visible travel for a zero-delay line
@@ -146,7 +147,8 @@ export class Renderer {
     const delaySec = evt.arriveTime - (evt.fromTime ?? evt.arriveTime);
     const travel = clamp(delaySec || PULSE_MIN, PULSE_MIN, PULSE_MAX);
     this.pulses.push({ lineId: evt.lineId, start: evt.arriveTime - travel, end: evt.arriveTime });
-    if (this.pulses.length > 900) this.pulses.splice(0, this.pulses.length - 900);
+    const over = this.pulses.length - LIMITS.visualPulses;
+    if (over > 0) this.pulses.splice(0, over);
   }
 
   addFire(evt) {

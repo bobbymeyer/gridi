@@ -9,6 +9,7 @@
 // iOS browser, since they all run WebKit. A secure context is required.
 
 import { clamp } from './util.js';
+import { LIMITS, RateMeter } from './limits.js';
 
 export const MIDI_SUPPORTED = typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator;
 
@@ -33,6 +34,8 @@ export class MidiOut {
     this.onChange = () => {};
     this.sounding = new Set(); // "ch:note" currently expected to be down
     this.pendingOffs = []; // note-offs not yet handed to the port
+    this.rate = new RateMeter();
+    this.governor = null;
   }
 
   get enabled() {
@@ -107,6 +110,15 @@ export class MidiOut {
     const v = clamp(Math.round(velocity), 1, 127);
     const key = `${ch}:${n}`;
     const end = at + Math.max(0.01, durationSec);
+
+    // Throttle note-ons only. Dropping a note-off would leave a note sounding
+    // on the receiving instrument with nothing left to release it.
+    const now = this.clock.now();
+    if (this.rate.rate(now) > LIMITS.midiPerSecond) {
+      this.governor?.trip('midi', now, 'notes dropped');
+      return;
+    }
+    this.rate.add(now, 2); // this note-on and the note-off it will need
 
     // Release anything of this pitch still due to be held past our start.
     for (const off of this.pendingOffs) {

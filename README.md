@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 110 unit tests, no dependencies
+npm test           # 126 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -141,6 +141,35 @@ Stop and panic cancel everything still queued at the port, release every note
 believed to be sounding, and send all-notes-off and all-sound-off on all
 sixteen channels, so nothing is left hanging in the receiving instrument.
 
+## Limits
+
+A patch can ask for more than any machine or MIDI port can give. Rather than
+let it, Gridi caps the damage and says what happened.
+
+| Limit | Ceiling | What happens past it |
+|---|---|---|
+| Scheduler events | 2000 per tick, 8000 per second sustained | In-flight pulses are dropped; repeated overloads stop the transport |
+| MIDI messages | 2000 per second | Surplus note-ons are dropped — never note-offs |
+| Sounding voices | 64 across the patch | The oldest are released early |
+| Patch size | 400 nodes, 800 lines | The remainder is left out on load |
+
+The one that matters is the first. A line looping back on itself turns one pulse
+into two, those into four, and nothing in the graph stops it. Measured before
+these limits, a four-node patch of that shape sent **143,813 MIDI messages per
+second** — enough to swamp any port or DAW. The same patch now sends 751 per
+second and halts, with a note saying where to look. For comparison, a dense but
+ordinary patch — 174bpm, 1/32, six Note nodes across three channels — runs at
+843 messages per second and trips nothing.
+
+Throttling never drops a note-off. A dropped note-on is a missing note; a
+dropped note-off is a note that sounds forever on the receiving instrument.
+
+When a limit trips, the banner carries the same closing point, because it is
+usually the real answer: **Gridi is built to send MIDI, not to be an audio
+engine.** The built-in voices are for sketching a patch, not performing it. For
+heavy synthesis, drive a DAW or a hardware instrument over MIDI, where it will
+run far better.
+
 ## Lines are objects, not drawings
 
 A line is not a rendered edge with an arrow on it. It carries state, and that
@@ -191,6 +220,7 @@ pad with different weight, which the flat form cannot express at all.
 src/
   music.js      scales, keys, scale-degree resolution
   voice.js      synth maths: oscillator tuning, ADSR, filter and voice allocation
+  limits.js     guard rails: rate metering, and reporting a breach once
   rhythm.js     divisions, swing, Bjorklund Euclidean patterns
   model.js      the patch document: nodes, lines, serialisation, repair
   nodes.js      node type registry — declarative, the inspector builds itself from it

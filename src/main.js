@@ -16,6 +16,7 @@ import {
   CELL, screenToWorld, hitNode, hitOutPort, hitLine, snapCell, findFreeCell, nodeRect,
 } from './geometry.js';
 import { clamp } from './util.js';
+import { Governor, LIMITS, SCOPE_NOTE } from './limits.js';
 
 const STORAGE_KEY = 'gridi.patch.v1';
 const THEME_KEY = 'gridi.theme';
@@ -40,6 +41,27 @@ const audio = new AudioEngine();
 const midi = new MidiOut(audio);
 const canvas = $('canvas');
 
+/**
+ * Limit breaches surface here. The banner always carries the same closing
+ * point, because it is nearly always the real answer: this is a MIDI
+ * sequencer, and the synth in it is a sketchpad.
+ */
+const governor = new Governor((trip) => showGuard(trip));
+audio.governor = governor;
+midi.governor = governor;
+
+function showGuard({ title, detail, note, repeats }) {
+  const count = repeats > 1 ? ` (${repeats}\u00d7)` : '';
+  $('guard-title').textContent = note ? `${title} — ${note}${count}` : `${title}${count}`;
+  $('guard-detail').textContent = detail;
+  $('guard-scope').textContent = SCOPE_NOTE;
+  $('guard').hidden = false;
+}
+
+function hideGuard() {
+  $('guard').hidden = true;
+}
+
 const renderer = new Renderer(canvas, () => ({
   patch: state.patch,
   view: state.patch.view,
@@ -52,6 +74,13 @@ const engine = new Engine({
   getPatch: () => state.patch,
   audio,
   midi,
+  governor,
+  onOverload: ({ stop: shouldStop }) => {
+    if (shouldStop && engine.running) {
+      stop();
+      setStatus('Transport stopped: the patch kept overloading. Look for a line that loops back on itself.', 'Halted.');
+    }
+  },
   onPulse: (evt) => renderer.addPulse(evt),
   onFire: (evt) => {
     renderer.addFire(evt);
@@ -123,6 +152,8 @@ function fitView() {
 }
 
 function loadPatch(patch, { keepHistory = false } = {}) {
+  governor.reset();
+  hideGuard();
   if (!keepHistory) {
     history.past.length = 0;
     history.future.length = 0;
@@ -167,6 +198,11 @@ function redo() {
 
 const counts = (patch) =>
   `${patch.nodes.length} node${patch.nodes.length === 1 ? '' : 's'} \u00b7 ${patch.lines.length} line${patch.lines.length === 1 ? '' : 's'}`;
+
+/** A patch larger than Gridi will hold is truncated rather than allowed in. */
+function onPatchLimit(kind, asked, kept) {
+  governor.trip('patch', audio.now(), `${asked} ${kind}, kept ${kept}`);
+}
 
 function setStatus(text, strong = '') {
   $('status').innerHTML = strong ? `<b>${strong}</b> ${text}` : text;
@@ -296,6 +332,10 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   if (state.ui.placing) {
+    if (state.patch.nodes.length >= LIMITS.nodes) {
+      governor.trip('patch', audio.now(), `${LIMITS.nodes} nodes is the limit`);
+      return;
+    }
     const type = state.ui.placing;
     const spot = findFreeCell(state.patch, snapCell(world.x) - 3, snapCell(world.y) - 1);
     snapshot();
@@ -394,6 +434,11 @@ canvas.addEventListener('pointerup', (e) => {
     const fromId = state.ui.pendingFrom;
     state.ui.pendingFrom = null;
     state.ui.pendingTo = null;
+    if (target && state.patch.lines.length >= LIMITS.lines) {
+      governor.trip('patch', audio.now(), `${LIMITS.lines} lines is the limit`);
+      setStatus('This patch is at its line limit.', 'No:');
+      return;
+    }
     if (target && canConnect(state.patch, fromId, target.id)) {
       snapshot();
       const line = connect(state.patch, fromId, target.id);
@@ -526,6 +571,10 @@ function duplicateSelection() {
   if (state.selection.kind !== 'node') return;
   const node = nodeById(state.patch, state.selection.id);
   if (!node) return;
+  if (state.patch.nodes.length >= LIMITS.nodes) {
+    governor.trip('patch', audio.now(), `${LIMITS.nodes} nodes is the limit`);
+    return;
+  }
   snapshot();
   const spot = findFreeCell(state.patch, node.col, node.row + 4);
   const copy = addNode(state.patch, createNode(node.type, spot.col, spot.row, { ...node.params }));
@@ -552,7 +601,7 @@ $('file').addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    loadPatch(deserialize(await file.text()));
+    loadPatch(deserialize(await file.text(), onPatchLimit));
     setStatus(`Opened ${file.name}.`, '');
   } catch {
     setStatus('That file could not be read as a patch.', 'Sorry:');
@@ -560,6 +609,7 @@ $('file').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
+$('guard-close').addEventListener('click', hideGuard);
 $('play').addEventListener('click', toggleTransport);
 $('import').addEventListener('click', () => $('file').click());
 $('export').addEventListener('click', exportPatch);
@@ -721,7 +771,7 @@ function boot() {
   let initial = null;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) initial = deserialize(stored);
+    if (stored) initial = deserialize(stored, onPatchLimit);
   } catch {
     initial = null;
   }

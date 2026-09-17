@@ -9,6 +9,7 @@ import { defaultParams, typeMeta, NODE_TYPES } from './nodes.js';
 import { SCALES } from './music.js';
 import { DIVISIONS } from './rhythm.js';
 import { isWaveform } from './voice.js';
+import { LIMITS } from './limits.js';
 
 export const PATCH_VERSION = 1;
 
@@ -130,9 +131,13 @@ export function serialize(patch) {
 
 /**
  * Parse and repair a patch. Anything unknown is dropped rather than trusted, so
- * a hand-edited or older file still opens.
+ * a hand-edited or older file still opens, and a file claiming more nodes than
+ * Gridi will hold is truncated rather than allowed to wedge the app.
+ *
+ * @param {string|object} text
+ * @param {(kind: string, asked: number, kept: number) => void} [onLimit]
  */
-export function deserialize(text) {
+export function deserialize(text, onLimit) {
   const raw = typeof text === 'string' ? JSON.parse(text) : text;
   const patch = createPatch(typeof raw.name === 'string' ? raw.name : 'Untitled');
 
@@ -148,7 +153,9 @@ export function deserialize(text) {
     };
   }
 
-  const nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
+  const allNodes = Array.isArray(raw.nodes) ? raw.nodes : [];
+  const nodes = allNodes.slice(0, LIMITS.nodes);
+  if (allNodes.length > nodes.length) onLimit?.('nodes', allNodes.length, nodes.length);
   for (const n of nodes) {
     if (!n || !NODE_TYPES[n.type]) continue;
     const node = createNode(n.type, Number(n.col) || 0, Number(n.row) || 0);
@@ -168,7 +175,9 @@ export function deserialize(text) {
   }
 
   const ids = new Set(patch.nodes.map((n) => n.id));
-  const lines = Array.isArray(raw.lines) ? raw.lines : [];
+  const allLines = Array.isArray(raw.lines) ? raw.lines : [];
+  const lines = allLines.slice(0, LIMITS.lines);
+  if (allLines.length > lines.length) onLimit?.('lines', allLines.length, lines.length);
   for (const l of lines) {
     if (!l || !ids.has(l.from) || !ids.has(l.to) || l.from === l.to) continue;
     const line = createLine(l.from, l.to);

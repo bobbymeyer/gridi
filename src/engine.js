@@ -14,11 +14,11 @@ import { resolveDegree, SCALES } from './music.js';
 import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds } from './rhythm.js';
 import { outgoing, incoming, nodeById } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
+import { LIMITS, RateMeter } from './limits.js';
 
 export const LOOKAHEAD = 0.14; // seconds of future we schedule each tick
 export const TICK_MS = 25;
 const MAX_HOPS = 64; // feedback loops are allowed, but they have to end
-const MAX_EVENTS_PER_TICK = 4000; // runaway guard
 
 /** Parses "0:minPent 5:major" into [{root, scale}, ...]. */
 export function parseKeySteps(text) {
@@ -57,12 +57,15 @@ export class Engine {
    * @param {(evt: object) => void} [io.onPulse]  visual pulse travelling a line
    * @param {(evt: object) => void} [io.onFire]   a node produced sound
    */
-  constructor({ getPatch, audio, midi, onPulse, onFire }) {
+  constructor({ getPatch, audio, midi, onPulse, onFire, governor, onOverload }) {
     this.getPatch = getPatch;
     this.audio = audio;
     this.midi = midi;
     this.onPulse = onPulse ?? (() => {});
     this.onFire = onFire ?? (() => {});
+    this.governor = governor ?? null;
+    this.onOverload = onOverload ?? (() => {});
+    this.eventRate = new RateMeter();
 
     this.running = false;
     this.queue = new EventQueue();
@@ -88,6 +91,7 @@ export class Engine {
     this.buckets.clear();
     this.emitters.clear();
     this.bpm = patch.bpm;
+    this.eventRate.reset();
     this.anchorTime = this.audio.now() + 0.08; // a beat of slack before bar one
     this.anchorBeat = 0;
     this.running = true;
@@ -144,7 +148,9 @@ export class Engine {
     const horizon = now + LOOKAHEAD;
 
     this.scheduleEmitters(patch, horizon);
-    this.drain(patch, horizon);
+    const processed = this.drain(patch, horizon);
+    this.eventRate.add(now, processed);
+    if (this.eventRate.rate(now) > LIMITS.eventsPerSecond) this.runaway(now);
     this.sweepBuckets(now);
     // Note-offs are held until they are nearly due, so a retriggered note can
     // still be released first. This is the tick that lets them go.
@@ -184,10 +190,15 @@ export class Engine {
     }
   }
 
-  /** Process every queued event up to the horizon, in time order. */
+  /**
+   * Process every queued event up to the horizon, in time order. The per-tick
+   * ceiling means one tick cannot hang the page, whatever the patch does.
+   *
+   * @returns {number} how many events were handled
+   */
   drain(patch, horizon) {
     let processed = 0;
-    while (this.queue.size > 0 && processed < MAX_EVENTS_PER_TICK) {
+    while (this.queue.size > 0 && processed < LIMITS.eventsPerTick) {
       const next = this.queue.items[0];
       if (next.time > horizon) break;
       const evt = this.queue.pop();
@@ -196,6 +207,23 @@ export class Engine {
       else if (evt.kind === 'arrive') this.handleArrive(patch, evt);
       else if (evt.kind === 'gate') this.handleGateWindow(patch, evt);
     }
+    return processed;
+  }
+
+  /**
+   * A patch producing more pulses than the scheduler can carry -- almost always
+   * a line looping back on itself. Capping the work per tick alone would leave
+   * it running at the ceiling forever, so the in-flight pulses go, and if it
+   * keeps happening the transport stops rather than pretending to cope.
+   */
+  runaway(now) {
+    const dropped = this.queue.size;
+    this.queue.clear();
+    this.buckets.clear();
+    this.eventRate.reset();
+    this.midi.allOff();
+    this.governor?.trip('events', now, `${dropped} pulses dropped`);
+    if (this.governor?.shouldEscalate('events', now)) this.onOverload({ stop: true });
   }
 
   /* ----------------------------------------------------------- pulse context */
