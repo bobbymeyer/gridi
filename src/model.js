@@ -8,6 +8,7 @@ import { makeId, deepClone, clamp } from './util.js';
 import { defaultParams, typeMeta, NODE_TYPES } from './nodes.js';
 import { SCALES } from './music.js';
 import { DIVISIONS } from './rhythm.js';
+import { isWaveform } from './voice.js';
 
 export const PATCH_VERSION = 1;
 
@@ -153,8 +154,16 @@ export function deserialize(text) {
     const node = createNode(n.type, Number(n.col) || 0, Number(n.row) || 0);
     node.id = typeof n.id === 'string' && n.id ? n.id : node.id;
     node.label = typeof n.label === 'string' ? n.label : '';
-    node.params = { ...defaultParams(n.type), ...(n.params && typeof n.params === 'object' ? n.params : {}) };
+    const defaults = defaultParams(n.type);
+    const stored = n.params && typeof n.params === 'object' ? n.params : {};
+    node.params = { ...defaults, ...stored };
+    if (node.type === 'synth') migrateVoice(node.params, stored);
     if (node.type === 'pulse' && !DIVISIONS[node.params.division]) node.params.division = '1/16';
+    // Drop anything the current schema no longer knows about, so migrated
+    // params do not sit alongside the ones they replaced.
+    for (const key of Object.keys(node.params)) {
+      if (!(key in defaults)) delete node.params[key];
+    }
     patch.nodes.push(node);
   }
 
@@ -196,6 +205,30 @@ export function deserialize(text) {
 
 export const clonePatch = (patch) => deepClone(patch);
 
+/**
+ * Voice nodes once had a single waveform shared by two oscillators detuned
+ * symmetrically around it, and a filter sweep hard-coded at 3.5x the cutoff.
+ * Carry those patches over so they still sound as they did.
+ */
+function migrateVoice(params, stored) {
+  if (typeof stored.waveform !== 'string' || stored.aWave !== undefined) return;
+  const wave = isWaveform(stored.waveform) ? stored.waveform : 'sawtooth';
+  const detune = Math.abs(Number(stored.detune) || 0);
+  Object.assign(params, {
+    aWave: wave,
+    bWave: wave,
+    aOctave: 0,
+    bOctave: 0,
+    aSemi: 0,
+    bSemi: 0,
+    aDetune: -detune,
+    bDetune: detune,
+    aLevel: 1,
+    bLevel: 1,
+    filterEnv: Math.log2(3.5),
+  });
+}
+
 /* -------------------------------------------------------------- demo patch */
 
 /**
@@ -221,9 +254,16 @@ export function demoPatch() {
   const bass = addNode(p, createNode('synth', 27, 24, {
     degree: 1,
     octave: 1,
-    waveform: 'sawtooth',
+    aWave: 'sawtooth',
+    aDetune: -6,
+    aLevel: 0.75,
+    bWave: 'square',
+    bOctave: -1,
+    bDetune: 6,
+    bLevel: 0.5,
     cutoff: 900,
     resonance: 9,
+    filterEnv: 2.2,
     decay: 0.22,
     sustain: 0.1,
     level: 0.4,

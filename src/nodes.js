@@ -6,14 +6,15 @@
 
 import { SCALE_KEYS, SCALES, DEGREE_MODES, NOTE_NAMES } from './music.js';
 import { DIVISION_KEYS, DIVISIONS } from './rhythm.js';
+import { WAVEFORMS, WAVE_LABELS } from './voice.js';
 
 const scaleOptions = () => SCALE_KEYS.map((k) => ({ value: k, label: SCALES[k].label }));
 const rootOptions = () => NOTE_NAMES.map((n, i) => ({ value: i, label: n }));
 const divisionOptions = () => DIVISION_KEYS.map((k) => ({ value: k, label: DIVISIONS[k].label }));
 const degreeModeOptions = () =>
   Object.entries(DEGREE_MODES).map(([value, label]) => ({ value, label }));
+const waveOptions = () => WAVEFORMS.map((w) => ({ value: w, label: WAVE_LABELS[w] }));
 
-const WAVEFORMS = ['sine', 'triangle', 'sawtooth', 'square'];
 
 export const NODE_TYPES = {
   pulse: {
@@ -205,40 +206,71 @@ export const NODE_TYPES = {
     glyph: 'wave',
     inputs: 1,
     outputs: 'many',
-    blurb: 'A subtractive voice rendered in the browser.',
+    blurb: 'Two oscillators, a resonant filter and an ADSR, rendered in the browser.',
     defaults: {
       degree: 1,
       octave: 2,
       degreeMode: 'extend',
-      waveform: 'sawtooth',
+
+      aWave: 'sawtooth',
+      aOctave: 0,
+      aSemi: 0,
+      aDetune: -7,
+      aLevel: 0.7,
+
+      bWave: 'square',
+      bOctave: -1,
+      bSemi: 0,
+      bDetune: 7,
+      bLevel: 0.45,
+
       cutoff: 1800,
       resonance: 6,
+      filterEnv: 1.8,
+
       attack: 0.004,
       decay: 0.14,
       sustain: 0.25,
       release: 0.18,
       length: 0.25,
       level: 0.35,
-      detune: 8,
     },
     params: [
       { key: 'degree', label: 'Degree', type: 'number', min: -21, max: 22, step: 1, format: 'ordinal' },
       { key: 'octave', label: 'Octave', type: 'number', min: -1, max: 8, step: 1 },
       { key: 'degreeMode', label: 'Overflow', type: 'select', options: degreeModeOptions },
+
+      { key: 'aWave', label: 'Wave', type: 'segmented', options: waveOptions, group: 'Oscillator A' },
+      { key: 'aOctave', label: 'Octave', type: 'number', min: -3, max: 3, step: 1, group: 'Oscillator A' },
+      { key: 'aSemi', label: 'Semitones', type: 'number', min: -12, max: 12, step: 1, group: 'Oscillator A' },
+      { key: 'aDetune', label: 'Detune', type: 'slider', min: -50, max: 50, step: 1, unit: 'ct', group: 'Oscillator A' },
+      { key: 'aLevel', label: 'Level', type: 'slider', min: 0, max: 1, step: 0.01, group: 'Oscillator A' },
+
+      { key: 'bWave', label: 'Wave', type: 'segmented', options: waveOptions, group: 'Oscillator B' },
+      { key: 'bOctave', label: 'Octave', type: 'number', min: -3, max: 3, step: 1, group: 'Oscillator B' },
+      { key: 'bSemi', label: 'Semitones', type: 'number', min: -12, max: 12, step: 1, group: 'Oscillator B' },
+      { key: 'bDetune', label: 'Detune', type: 'slider', min: -50, max: 50, step: 1, unit: 'ct', group: 'Oscillator B' },
+      { key: 'bLevel', label: 'Level', type: 'slider', min: 0, max: 1, step: 0.01, group: 'Oscillator B' },
+
+      { key: 'cutoff', label: 'Cutoff', type: 'slider', min: 80, max: 12000, step: 10, unit: 'Hz', group: 'Filter' },
+      { key: 'resonance', label: 'Reso', type: 'slider', min: 0.1, max: 20, step: 0.1, group: 'Filter' },
       {
-        key: 'waveform',
-        label: 'Wave',
-        type: 'segmented',
-        options: () => WAVEFORMS.map((w) => ({ value: w, label: w.slice(0, 3).toUpperCase() })),
+        key: 'filterEnv',
+        label: 'Env depth',
+        type: 'slider',
+        min: 0,
+        max: 4,
+        step: 0.1,
+        unit: 'oct',
+        group: 'Filter',
+        hint: 'How far the envelope opens the filter above the cutoff.',
       },
-      { key: 'cutoff', label: 'Cutoff', type: 'slider', min: 80, max: 12000, step: 10, unit: 'Hz', curve: 'log' },
-      { key: 'resonance', label: 'Reso', type: 'slider', min: 0.1, max: 20, step: 0.1 },
-      { key: 'detune', label: 'Detune', type: 'slider', min: 0, max: 40, step: 1, unit: 'ct' },
-      { key: 'attack', label: 'Attack', type: 'slider', min: 0.001, max: 1, step: 0.001, unit: 's', group: 'Envelope' },
+
+      { key: 'attack', label: 'Attack', type: 'slider', min: 0.001, max: 2, step: 0.001, unit: 's', group: 'Envelope' },
       { key: 'decay', label: 'Decay', type: 'slider', min: 0.005, max: 2, step: 0.005, unit: 's', group: 'Envelope' },
       { key: 'sustain', label: 'Sustain', type: 'slider', min: 0, max: 1, step: 0.01, group: 'Envelope' },
       { key: 'release', label: 'Release', type: 'slider', min: 0.005, max: 3, step: 0.005, unit: 's', group: 'Envelope' },
-      { key: 'length', label: 'Length', type: 'slider', min: 0.02, max: 4, step: 0.02, unit: 'beat', group: 'Envelope' },
+      { key: 'length', label: 'Gate', type: 'slider', min: 0.02, max: 4, step: 0.02, unit: 'beat', group: 'Envelope', hint: 'How long the note is held before the release starts.' },
       { key: 'level', label: 'Level', type: 'slider', min: 0, max: 1, step: 0.01, group: 'Envelope' },
     ],
   },
@@ -360,7 +392,11 @@ export const MODULATABLE = {
   chance: ['probability'],
   router: [],
   note: ['degree', 'octave', 'velocity', 'length', 'ratchet'],
-  synth: ['degree', 'octave', 'cutoff', 'resonance', 'detune', 'level', 'length', 'sustain'],
+  synth: [
+    'degree', 'octave', 'cutoff', 'resonance', 'filterEnv', 'level', 'length',
+    'attack', 'decay', 'sustain', 'release',
+    'aOctave', 'aSemi', 'aDetune', 'aLevel', 'bOctave', 'bSemi', 'bDetune', 'bLevel',
+  ],
   param: ['amount'],
   key: ['root', 'transpose'],
 };

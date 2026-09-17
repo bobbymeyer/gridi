@@ -259,6 +259,11 @@ input.field[type="number"] { text-transform: none; }
 .seg > button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .seg > button:hover:not([aria-pressed="true"]) { background: var(--paper-2); }
 
+/* Inside an inspector row the control column is fixed, so segments share it out
+   between them. A four-way choice then fits as readily as a two-way one. */
+.row__control .seg { flex: 1; min-width: 0; }
+.row__control .seg > button { flex: 1; min-width: 0; padding: 0 4px; }
+
 /* Range: a bar graph, not a slider ---------------------------------------- */
 
 input[type="range"] {

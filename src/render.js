@@ -8,6 +8,7 @@ import { CELL, MODULE, nodeRect, portOut, routeLine, pointAlongPath, pathMidpoin
 import { typeMeta } from './nodes.js';
 import { DIVISIONS, euclid, patternString } from './rhythm.js';
 import { SCALES, NOTE_NAMES } from './music.js';
+import { WAVE_LABELS } from './voice.js';
 import { outgoing, incoming, channelSummary } from './model.js';
 import { clamp } from './util.js';
 
@@ -59,11 +60,17 @@ export function nodeReadout(node, patch) {
         primary: ordinal(p.degree).toUpperCase(),
         secondary: `OCT ${p.octave} · ${p.midiOn ? 'MIDI' : 'MUTE'}${p.ratchet > 1 ? ` · R${p.ratchet}` : ''}`,
       };
-    case 'synth':
+    case 'synth': {
+      const oscs = [
+        p.aLevel > 0 ? WAVE_LABELS[p.aWave] ?? 'SAW' : null,
+        p.bLevel > 0 ? WAVE_LABELS[p.bWave] ?? 'SAW' : null,
+      ].filter(Boolean);
       return {
         primary: ordinal(p.degree).toUpperCase(),
-        secondary: `${p.waveform.slice(0, 3).toUpperCase()} · ${Math.round(p.cutoff)}HZ`,
+        secondary: `${oscs.join('+') || 'SILENT'} · ${Math.round(p.cutoff)}HZ`,
+        muted: oscs.length === 0,
       };
+    }
     case 'param': {
       const target = patch.nodes.find((n) => n.id === p.target);
       const where = p.scope === 'signal' ? 'SIGNAL' : (target ? typeMeta(target.type).label.toUpperCase() : 'NO TARGET');

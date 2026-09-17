@@ -4,8 +4,84 @@
 // makes sound; midi.js sends messages. They only share a sense of time.
 
 import { clamp } from './util.js';
+import {
+  adsrPoints, filterPoints, envelopeEnd, oscHz, oscMix, midiToHz, isWaveform, SILENCE,
+} from './voice.js';
 
-const midiToHz = (note) => 440 * 2 ** ((note - 69) / 12);
+/**
+ * Write a breakpoint list onto an AudioParam. The first point is set outright
+ * and the rest are ramped to on the curve each one names. Exponential curves
+ * cannot reach or pass through zero, so silence is a very small number instead.
+ */
+function applyPoints(param, points, floor = SILENCE) {
+  param.cancelScheduledValues(points[0].time);
+  param.setValueAtTime(Math.max(points[0].value, floor), points[0].time);
+  for (let i = 1; i < points.length; i += 1) {
+    const { time, value, curve } = points[i];
+    if (curve === 'linear') param.linearRampToValueAtTime(Math.max(value, floor), time);
+    else param.exponentialRampToValueAtTime(Math.max(value, floor), time);
+  }
+}
+
+/**
+ * Build one voice on any context, and return its sources plus the time it goes
+ * quiet. Taking the context and destination as arguments means the exact same
+ * graph can be rendered offline in a test as is played live.
+ *
+ * Two oscillators, each with its own waveform, octave, semitone offset, fine
+ * detune and level, through a resonant low-pass with its own contour, into an
+ * ADSR amplifier.
+ */
+export function buildVoice(ctx, destination, params, midiNote, velocity, at, holdSec) {
+  const env = {
+    attack: params.attack,
+    decay: params.decay,
+    sustain: params.sustain,
+    release: params.release,
+  };
+  const hold = Math.max(holdSec, 0.001);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.Q.value = clamp(params.resonance, 0.0001, 24);
+  applyPoints(filter.frequency, filterPoints(env, params.cutoff, params.filterEnv, at, hold), 20);
+
+  const amp = ctx.createGain();
+  const peak = clamp(params.level, 0, 1) * (clamp(velocity, 1, 127) / 127);
+  const envelope = adsrPoints(env, peak, at, hold);
+  applyPoints(amp.gain, envelope);
+
+  const mix = oscMix(params.aLevel, params.bLevel);
+  const specs = [
+    { wave: params.aWave, octave: params.aOctave, semi: params.aSemi, detune: params.aDetune, gain: mix.a },
+    { wave: params.bWave, octave: params.bOctave, semi: params.bSemi, detune: params.bDetune, gain: mix.b },
+  ];
+
+  const stopAt = envelopeEnd(envelope) + 0.02;
+  const oscillators = [];
+  for (const spec of specs) {
+    if (spec.gain <= 0) continue; // a silenced oscillator costs nothing to skip
+    const osc = ctx.createOscillator();
+    osc.type = isWaveform(spec.wave) ? spec.wave : 'sawtooth';
+    osc.frequency.setValueAtTime(
+      clamp(oscHz(midiNote, spec.octave, spec.semi), 0.01, ctx.sampleRate / 2),
+      at,
+    );
+    osc.detune.setValueAtTime(clamp(spec.detune, -1200, 1200), at);
+
+    const level = ctx.createGain();
+    level.gain.setValueAtTime(spec.gain, at);
+    osc.connect(level);
+    level.connect(filter);
+    osc.start(at);
+    osc.stop(stopAt);
+    oscillators.push(osc);
+  }
+
+  filter.connect(amp);
+  amp.connect(destination);
+  return { oscillators, stopAt };
+}
 
 export class AudioEngine {
   constructor() {
@@ -53,9 +129,15 @@ export class AudioEngine {
     if (this.master) this.master.gain.setTargetAtTime(this.volume, this.now(), 0.01);
   }
 
-  track(node, stopAt) {
+  /** Remember a source so panic can silence it, and forget it when it ends. */
+  register(node) {
     this.live.add(node);
     node.onended = () => this.live.delete(node);
+    return node;
+  }
+
+  track(node, stopAt) {
+    this.register(node);
     try {
       node.stop(stopAt);
     } catch {
@@ -92,48 +174,12 @@ export class AudioEngine {
     this.track(osc, t + length + 0.05);
   }
 
-  /** Subtractive voice for Voice nodes: two detuned oscillators into a filter. */
+  /** Two-oscillator subtractive voice. The graph itself is built by buildVoice. */
   voice(params, midiNote, velocity, at, dur) {
     if (!this.ctx) return;
     const t = Math.max(at, this.now());
-    const freq = midiToHz(midiNote);
-    const amp = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    filter.type = 'lowpass';
-    filter.Q.value = clamp(params.resonance, 0.0001, 24);
-
-    const cutoff = clamp(params.cutoff, 40, 18000);
-    const peakCutoff = clamp(cutoff * 3.5, 40, 18000);
-    filter.frequency.setValueAtTime(cutoff, t);
-    filter.frequency.linearRampToValueAtTime(peakCutoff, t + params.attack);
-    filter.frequency.exponentialRampToValueAtTime(
-      Math.max(cutoff, 40),
-      t + params.attack + params.decay,
-    );
-
-    const level = clamp(params.level, 0, 1) * (velocity / 127);
-    const sustainLevel = Math.max(level * clamp(params.sustain, 0, 1), 0.0001);
-    const hold = Math.max(dur, params.attack + 0.01);
-    amp.gain.setValueAtTime(0.0001, t);
-    amp.gain.exponentialRampToValueAtTime(Math.max(level, 0.0002), t + params.attack);
-    amp.gain.exponentialRampToValueAtTime(sustainLevel, t + params.attack + params.decay);
-    amp.gain.setValueAtTime(sustainLevel, t + hold);
-    amp.gain.exponentialRampToValueAtTime(0.0001, t + hold + params.release);
-
-    const stopAt = t + hold + params.release + 0.05;
-    for (const detune of [-params.detune, params.detune]) {
-      const osc = this.ctx.createOscillator();
-      osc.type = params.waveform;
-      osc.frequency.setValueAtTime(freq, t);
-      osc.detune.setValueAtTime(detune, t);
-      osc.connect(filter);
-      osc.start(t);
-      this.track(osc, stopAt);
-    }
-
-    filter.connect(amp);
-    amp.connect(this.master);
+    const { oscillators } = buildVoice(this.ctx, this.master, params, midiNote, velocity, t, dur);
+    for (const osc of oscillators) this.register(osc);
   }
 
   /** Stop everything already scheduled. Used by transport stop and panic. */

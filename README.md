@@ -28,8 +28,15 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 62 unit tests, no dependencies
+npm test           # 81 unit tests, no dependencies
 ```
+
+The synth is also checked by ear, or rather by measurement. Open
+`/tests/audio-check.html` in a browser: it renders the Voice node's real audio
+graph through an `OfflineAudioContext` and measures what comes out — oscillator
+tuning, each waveform's harmonics against theory, the envelope's shape, filter
+response, velocity scaling and headroom. 16 checks, no dependencies, since
+Web Audio needs a browser and the node suite deliberately does not.
 
 ## The first five minutes
 
@@ -57,9 +64,32 @@ Windows — and have the DAW listen on it. There is no direct app-to-app route.
 | **Chance** | Lets a pulse through a set percentage of the time. Drift mode nudges the odds after each result. |
 | **Router** | Sends each pulse down exactly one line — cycling, ping-pong, random, or random with no repeats. Melodic variation, as against Split's "all at once". |
 | **Note** | Fires a **scale degree** as MIDI on every channel the line carries. Ratchets subdivide one trigger. |
-| **Voice** | A subtractive Web Audio voice: two detuned oscillators, filter with its own envelope, ADSR. |
+| **Voice** | A subtractive Web Audio synth: two independent oscillators, a resonant low-pass with its own contour, and an ADSR. |
 | **Param** | Rewrites a parameter instead of firing a note, then passes the pulse on. Can target another node, or the pulse itself. |
 | **Key** | Rewrites scale and key for everything downstream, live. Latch mode writes the project key so the whole patch modulates. |
+
+## The Voice node
+
+Two oscillators, each with its own **waveform** (sine, triangle, square, sawtooth),
+**octave**, **semitone** offset, fine **detune** in cents, and **level**. They mix
+rather than sum, so adding the second one never pushes the output past the first.
+Set one to zero level and it is not built at all.
+
+Both run into a resonant low-pass whose **env depth** sweeps the cutoff up by a
+number of octaves and back, then into an ADSR amplifier.
+
+The **attack is linear and everything after it is exponential**. This is not
+cosmetic: an exponential rise out of silence is heavily back-loaded — a 200ms
+attack sits at a third of its level with 10% of its time left, which reads as a
+late swell rather than an attack. Falls are the opposite; the ear expects
+exponential, and linear decays sound artificial.
+
+The gate closes after **gate** beats whatever stage the envelope has reached, so
+a note cut short during its attack or decay releases from the level it actually
+got to rather than jumping to the sustain level first.
+
+Voice nodes make sound in the browser and send no MIDI; the channels a line
+carries mean nothing to them. Note nodes are the MIDI side.
 
 ## Lines are objects, not drawings
 
@@ -110,6 +140,7 @@ pad with different weight, which the flat form cannot express at all.
 ```
 src/
   music.js      scales, keys, scale-degree resolution
+  voice.js      synth maths: oscillator tuning, ADSR and filter breakpoints
   rhythm.js     divisions, swing, Bjorklund Euclidean patterns
   model.js      the patch document: nodes, lines, serialisation, repair
   nodes.js      node type registry — declarative, the inspector builds itself from it
@@ -140,10 +171,16 @@ at a time that has already passed in queue order is still in the future.
 
 **Randomness** is seeded per patch, so a chance-heavy patch replays identically.
 
-`engine.js`, `model.js`, `music.js`, `rhythm.js` and `geometry.js` have no DOM,
-audio or MIDI dependencies, which is what makes the test suite possible: the
-engine runs against a fake clock and stub outputs, and asserts on the notes it
-would have sent.
+`engine.js`, `model.js`, `music.js`, `rhythm.js`, `voice.js` and `geometry.js`
+have no DOM, audio or MIDI dependencies, which is what makes the test suite
+possible: the engine runs against a fake clock and stub outputs, and asserts on
+the notes it would have sent. The envelope maths sits in `voice.js` rather than
+inside the audio graph for the same reason — ADSR bugs live in the awkward cases
+(a note released mid-attack, zero sustain, a decay longer than the note itself),
+and those are painful to find by ear.
+
+`buildVoice` in `audio.js` takes its context and destination as arguments, so the
+exact graph that plays live is the one the browser check renders offline.
 
 ## Browser support
 
@@ -170,4 +207,7 @@ Dark mode included, because nobody performs under a white screen.
 - Node groups and sub-patches.
 - MIDI clock in/out and external sync.
 - CC output from Param nodes (they modulate in-app parameters only).
+- An LFO. Modulation is step-wise today: a Param node changes a value when a
+  pulse arrives, so filter sweeps and vibrato come out as staircases.
+- Filter types beyond low-pass.
 - Recording or exporting the output.
