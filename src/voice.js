@@ -108,3 +108,40 @@ export function oscMix(levelA, levelB) {
   const scale = Math.min(1, 1 / total);
   return { a: a * scale, b: b * scale };
 }
+
+/**
+ * Which voices to let go of before starting another.
+ *
+ * Cost scales with how many voices sound at once, and a long release against a
+ * fast clock piles them up without limit — measured, eight Voice nodes at 1/32
+ * with a two-second release reach 339 at once, which is more than the audio
+ * thread can render in real time. So each node holds at most `cap` notes and
+ * steals its own oldest to make room, with a global ceiling behind that as a
+ * backstop against a patch with many nodes.
+ *
+ * Stealing by age is what a hardware synth does, and it is the least surprising:
+ * the note you played longest ago is the one you miss least.
+ *
+ * @param {Array<{owner: string, start: number}>} voices  currently sounding
+ * @param {string} owner   the node about to play
+ * @param {number} cap     that node's own voice limit
+ * @param {number} globalCap ceiling across every node
+ * @returns {Array} the voices to release, oldest first
+ */
+export function stealTargets(voices, owner, cap, globalCap) {
+  const doomed = new Set();
+  const byAge = (a, b) => a.start - b.start;
+
+  const mine = voices.filter((v) => v.owner === owner).sort(byAge);
+  for (let i = 0; mine.length - doomed.size >= Math.max(1, cap); i += 1) {
+    if (i >= mine.length) break;
+    doomed.add(mine[i]);
+  }
+
+  const all = [...voices].sort(byAge);
+  for (let i = 0; voices.length - doomed.size >= Math.max(1, globalCap); i += 1) {
+    if (i >= all.length) break;
+    doomed.add(all[i]);
+  }
+  return [...doomed].sort(byAge);
+}

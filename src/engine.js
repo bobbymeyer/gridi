@@ -491,7 +491,7 @@ export class Engine {
     );
     const vel = clamp(Math.round(ctx.velocity), 1, 127);
     const dur = beatsToSeconds(node.params.length, this.bpm);
-    this.audio.voice(node.params, midiNote, vel, evt.time, dur);
+    this.audio.voice(node.params, midiNote, vel, evt.time, dur, node.id);
     this.onFire({ nodeId: node.id, time: evt.time, kind: 'note', notes: [{ ch: 0, note: midiNote, vel }] });
     this.send(patch, node.id, ctx, evt.time, evt.hops);
   }

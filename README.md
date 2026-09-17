@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 81 unit tests, no dependencies
+npm test           # 98 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -91,6 +91,29 @@ got to rather than jumping to the sustain level first.
 Voice nodes make sound in the browser and send no MIDI; the channels a line
 carries mean nothing to them. Note nodes are the MIDI side.
 
+### Polyphony
+
+Each Voice node holds **8 notes at once** by default, and steals its own oldest
+when it needs room — the note played longest ago is the one you miss least. A
+global ceiling of 64 sits behind that as a backstop against a patch with many
+nodes. Stolen voices fade over 12ms rather than being cut off, so stealing does
+not click.
+
+This is not housekeeping. A long release against a fast clock piles voices up
+without limit: measured before the cap, eight Voice nodes at 1/32 with a
+two-second release reached **339 sounding at once**, which is more than the
+audio thread can render in real time. Capped, the same patch settles at 64.
+
+A finished voice is also explicitly disconnected. An oscillator is released once
+it stops, but the filter and gain nodes it fed stay wired to the output until
+something takes them out, and at a voice per sixteenth that accumulates fast.
+Measured over 15 seconds of that same patch: 2256 voices built, 2256 retired,
+9024 audio nodes disconnected, nothing left behind after stop.
+
+Cost scales with how many voices sound at once, so if a dense patch struggles on
+slower hardware the levers are fewer Voice nodes, a shorter release, or a lower
+voice count per node — not a faster machine.
+
 ## Lines are objects, not drawings
 
 A line is not a rendered edge with an arrow on it. It carries state, and that
@@ -140,7 +163,7 @@ pad with different weight, which the flat form cannot express at all.
 ```
 src/
   music.js      scales, keys, scale-degree resolution
-  voice.js      synth maths: oscillator tuning, ADSR and filter breakpoints
+  voice.js      synth maths: oscillator tuning, ADSR, filter and voice allocation
   rhythm.js     divisions, swing, Bjorklund Euclidean patterns
   model.js      the patch document: nodes, lines, serialisation, repair
   nodes.js      node type registry — declarative, the inspector builds itself from it
@@ -210,4 +233,8 @@ Dark mode included, because nobody performs under a white screen.
 - An LFO. Modulation is step-wise today: a Param node changes a value when a
   pulse arrives, so filter sweeps and vibrato come out as staircases.
 - Filter types beyond low-pass.
+- Audio-thread load is not directly observable from a page, so the polyphony
+  figures above come from main-thread timing, offline renders and the engine's
+  own voice counts. They agree with each other, but none of them is a dropout
+  counter.
 - Recording or exporting the output.

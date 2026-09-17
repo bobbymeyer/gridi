@@ -234,6 +234,7 @@ export const NODE_TYPES = {
       release: 0.18,
       length: 0.25,
       level: 0.35,
+      voices: 8,
     },
     params: [
       { key: 'degree', label: 'Degree', type: 'number', min: -21, max: 22, step: 1, format: 'ordinal' },
@@ -272,6 +273,16 @@ export const NODE_TYPES = {
       { key: 'release', label: 'Release', type: 'slider', min: 0.005, max: 3, step: 0.005, unit: 's', group: 'Envelope' },
       { key: 'length', label: 'Gate', type: 'slider', min: 0.02, max: 4, step: 0.02, unit: 'beat', group: 'Envelope', hint: 'How long the note is held before the release starts.' },
       { key: 'level', label: 'Level', type: 'slider', min: 0, max: 1, step: 0.01, group: 'Envelope' },
+      {
+        key: 'voices',
+        label: 'Voices',
+        type: 'number',
+        min: 1,
+        max: 32,
+        step: 1,
+        group: 'Envelope',
+        hint: 'Notes this node holds at once. Past that, its oldest is stolen.',
+      },
     ],
   },
 

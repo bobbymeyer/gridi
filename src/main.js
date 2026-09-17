@@ -740,3 +740,8 @@ function boot() {
 }
 
 boot();
+
+// The running singletons, so a browser check (or a console) can observe the
+// live app rather than a rebuilt copy of it. Importing this module again
+// returns the same instances; boot() does not run twice.
+export { state, audio, midi, engine, renderer };

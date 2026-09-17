@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   adsrPoints, filterPoints, envelopeEnd, oscMidi, oscHz, oscMix, midiToHz,
-  isWaveform, WAVEFORMS,
+  isWaveform, stealTargets, WAVEFORMS,
 } from '../src/voice.js';
 import { defaultParams } from '../src/nodes.js';
 import { deserialize, demoPatch, serialize } from '../src/model.js';
@@ -162,4 +162,67 @@ test('unknown params are dropped on load', () => {
     nodes: [{ type: 'synth', col: 0, row: 0, params: { madeUp: 42 } }],
   }));
   assert.equal(p.nodes[0].params.madeUp, undefined);
+});
+
+/* ------------------------------------------------------------ allocation */
+
+const voice = (owner, start) => ({ owner, start });
+
+test('nothing is stolen while there is room', () => {
+  const voices = [voice('a', 0), voice('a', 1), voice('b', 2)];
+  assert.deepEqual(stealTargets(voices, 'a', 8, 64), []);
+});
+
+test('a node at its limit steals its own oldest note', () => {
+  const voices = [voice('a', 3), voice('a', 1), voice('a', 2)];
+  const doomed = stealTargets(voices, 'a', 3, 64);
+  assert.equal(doomed.length, 1);
+  assert.equal(doomed[0].start, 1, 'the longest-ago note goes first');
+});
+
+test('stealing never touches another node', () => {
+  const voices = [voice('b', 0), voice('b', 1), voice('a', 5), voice('a', 6)];
+  const doomed = stealTargets(voices, 'a', 2, 64);
+  assert.deepEqual(doomed.map((v) => v.owner), ['a']);
+  assert.equal(doomed[0].start, 5);
+});
+
+test('a node well over its limit is brought back to it', () => {
+  const voices = Array.from({ length: 10 }, (_, i) => voice('a', i));
+  const doomed = stealTargets(voices, 'a', 4, 64);
+  // Ten sounding, four allowed, one about to start: six must go.
+  assert.equal(doomed.length, 7);
+  assert.deepEqual(doomed.map((v) => v.start), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(voices.length - doomed.length, 3, 'leaves room for the new note');
+});
+
+test('the global ceiling catches what per-node limits let through', () => {
+  // Sixteen nodes, two voices each: no single node is over its own limit.
+  const voices = [];
+  for (let n = 0; n < 16; n += 1) {
+    voices.push(voice(`n${n}`, n * 2), voice(`n${n}`, n * 2 + 1));
+  }
+  assert.deepEqual(stealTargets(voices, 'n0', 8, 64), [], 'under the ceiling, nothing goes');
+  const doomed = stealTargets(voices, 'n0', 8, 24);
+  assert.ok(doomed.length > 0, 'over the ceiling, the oldest go');
+  assert.equal(voices.length - doomed.length, 23, 'room for one more');
+  assert.equal(doomed[0].start, 0, 'oldest first, whoever owns it');
+});
+
+test('a cap of one still lets a note through', () => {
+  const voices = [voice('a', 0)];
+  assert.equal(stealTargets(voices, 'a', 1, 64).length, 1);
+  assert.deepEqual(stealTargets([], 'a', 1, 64), []);
+});
+
+test('nonsense caps do not wedge the allocator', () => {
+  const voices = [voice('a', 0), voice('a', 1)];
+  assert.ok(stealTargets(voices, 'a', 0, 64).length <= voices.length);
+  assert.ok(stealTargets(voices, 'a', -5, 0).length <= voices.length);
+});
+
+test('the same voice is never stolen twice', () => {
+  const voices = Array.from({ length: 12 }, (_, i) => voice('a', i));
+  const doomed = stealTargets(voices, 'a', 2, 4);
+  assert.equal(new Set(doomed).size, doomed.length);
 });
