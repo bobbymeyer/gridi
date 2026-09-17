@@ -1,0 +1,13 @@
+{
+  "name": "gridi",
+  "version": "0.1.0",
+  "description": "Grid Pulse Sequencer — a spatial sequencer for generative MIDI and in-browser synthesis.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": ["midi", "web-audio", "sequencer", "generative"],
+  "license": "MIT"
+}
