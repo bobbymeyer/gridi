@@ -13,13 +13,13 @@
 import { clamp } from './util.js';
 
 export const SHAPES = {
-  sine: 'Sine',
-  triangle: 'Triangle',
-  ramp: 'Ramp',
-  saw: 'Saw',
-  square: 'Square',
-  random: 'Random',
-  drift: 'Drift',
+  sine: 'sine',
+  triangle: 'triangle',
+  ramp: 'ramp',
+  saw: 'saw',
+  square: 'square',
+  random: 'random',
+  drift: 'drift',
 };
 
 export const SHAPE_KEYS = Object.keys(SHAPES);

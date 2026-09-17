@@ -37,71 +37,71 @@ export function nodeReadout(node, patch) {
     case 'pulse': {
       const ratio = p.ratioNum !== 1 || p.ratioDen !== 1 ? ` ${p.ratioNum}:${p.ratioDen}` : '';
       const primary = `${DIVISIONS[p.division]?.label ?? p.division}${ratio}`;
-      const feel = p.swing > 0 ? `SWING ${Math.round(p.swing * 100)}` : 'STRAIGHT';
+      const feel = p.swing > 0 ? `swing ${Math.round(p.swing * 100)}` : 'straight';
       const secondary = p.euclidOn
         ? patternString(euclid(p.euclidPulses, p.euclidSteps, p.euclidRotate)).slice(0, 16)
-        : `${feel} · CH ${p.channel}`;
+        : `${feel} · ch ${p.channel}`;
       return { primary, secondary, muted: !p.running };
     }
     case 'lfo': {
       const rate = RATES[p.rate]?.label ?? p.rate;
       return {
-        primary: (SHAPES[p.shape] ?? p.shape).toUpperCase(),
+        primary: SHAPES[p.shape] ?? p.shape,
         secondary: `${rate} \u00b7 ${p.min}\u2013${p.max}`,
       };
     }
     case 'input': {
-      const labels = { key: 'SETS KEY', transpose: 'TRANSPOSE', none: 'GATE' };
+      const labels = { key: 'sets key', transpose: 'transpose', none: 'gate' };
       return {
-        primary: p.listen === 0 ? 'OMNI' : `CH ${p.listen}`,
-        secondary: labels[p.sets] ?? 'GATE',
+        primary: p.listen === 0 ? 'omni' : `ch ${p.listen}`,
+        secondary: labels[p.sets] ?? 'gate',
       };
     }
     case 'split': {
       const n = outgoing(patch, node.id).length;
-      return { primary: 'ALL', secondary: `${n} BRANCH${n === 1 ? '' : 'ES'}` };
+      return { primary: 'all', secondary: `${n} branch${n === 1 ? '' : 'es'}` };
     }
     case 'gate': {
-      const labels = { all: 'AND', any: 'OR', count: `${p.count} OF`, xor: 'XOR' };
-      return { primary: labels[p.mode] ?? 'AND', secondary: `${incoming(patch, node.id).length} IN · ${p.windowMs}MS` };
+      const labels = { all: 'and', any: 'or', count: `${p.count} of`, xor: 'xor' };
+      return { primary: labels[p.mode] ?? 'and', secondary: `${incoming(patch, node.id).length} in · ${p.windowMs}ms` };
     }
     case 'chance':
-      return { primary: `${Math.round(p.probability)}%`, secondary: p.mode === 'drunk' ? 'DRIFT' : 'FREE' };
+      return { primary: `${Math.round(p.probability)}%`, secondary: p.mode === 'drunk' ? 'drift' : 'free' };
     case 'router': {
-      const labels = { cycle: 'CYCLE', pingpong: 'PING-PONG', random: 'RANDOM', shuffle: 'NO REPEAT' };
-      return { primary: labels[p.mode] ?? 'CYCLE', secondary: `${outgoing(patch, node.id).length} OUT` };
+      const labels = { cycle: 'cycle', pingpong: 'ping-pong', random: 'random', shuffle: 'no repeat' };
+      return { primary: labels[p.mode] ?? 'cycle', secondary: `${outgoing(patch, node.id).length} out` };
     }
     case 'note':
       return {
-        primary: ordinal(p.degree).toUpperCase(),
-        secondary: `OCT ${p.octave} · ${p.midiOn ? 'MIDI' : 'MUTE'}${p.ratchet > 1 ? ` · R${p.ratchet}` : ''}`,
+        primary: ordinal(p.degree),
+        secondary: `oct ${p.octave} · ${p.midiOn ? 'MIDI' : 'mute'}${p.ratchet > 1 ? ` · r${p.ratchet}` : ''}`,
       };
     case 'synth': {
       const oscs = [
-        p.aLevel > 0 ? WAVE_LABELS[p.aWave] ?? 'SAW' : null,
-        p.bLevel > 0 ? WAVE_LABELS[p.bWave] ?? 'SAW' : null,
+        p.aLevel > 0 ? WAVE_LABELS[p.aWave] ?? 'saw' : null,
+        p.bLevel > 0 ? WAVE_LABELS[p.bWave] ?? 'saw' : null,
       ].filter(Boolean);
       return {
-        primary: ordinal(p.degree).toUpperCase(),
-        secondary: `${oscs.join('+') || 'SILENT'} · ${Math.round(p.cutoff)}HZ`,
+        primary: ordinal(p.degree),
+        secondary: `${oscs.join('+') || 'silent'} · ${Math.round(p.cutoff)}Hz`,
         muted: oscs.length === 0,
       };
     }
     case 'param': {
       if (p.scope === 'midi') {
-        return { primary: `CC ${clamp(Math.round(p.cc), 0, 127)}`, secondary: `MIDI · ${p.mode.toUpperCase()}` };
+        return { primary: `CC ${clamp(Math.round(p.cc), 0, 127)}`, secondary: `MIDI · ${p.mode}` };
       }
       const target = patch.nodes.find((n) => n.id === p.target);
-      const where = p.scope === 'signal' ? 'SIGNAL' : (target ? typeMeta(target.type).label.toUpperCase() : 'NO TARGET');
-      return { primary: (p.param || '—').toUpperCase(), secondary: `${where} · ${p.mode.toUpperCase()}` };
+      const where = p.scope === 'signal' ? 'signal' : (target ? typeMeta(target.type).label : 'no target');
+      return { primary: p.param || '—', secondary: `${where} · ${p.mode}` };
     }
     case 'key':
       return {
-        primary: p.mode === 'set' ? keyName(p.root, p.scale).toUpperCase() : p.mode.toUpperCase(),
-        secondary: p.latch ? 'LATCH · PROJECT' : 'DOWNSTREAM ONLY',
+        primary: p.mode === 'set' ? keyName(p.root, p.scale) : p.mode,
+        secondary: p.latch ? 'latch · project' : 'downstream only',
       };
     default:
-      return { primary: node.type.toUpperCase(), secondary: '' };
+      return { primary: node.type, secondary: '' };
   }
 }
 
@@ -351,9 +351,9 @@ export class Renderer {
       const mid = pathMidpoint(points);
       const badges = [];
       if (line.channelMode === 'set') badges.push({ text: channelSummary(line), color: this.colors.blue });
-      if (line.scaleMode === 'set') badges.push({ text: keyName(line.root, line.scale).toUpperCase(), color: this.colors.red });
+      if (line.scaleMode === 'set') badges.push({ text: keyName(line.root, line.scale), color: this.colors.red });
       if (line.delay > 0) badges.push({ text: `+${line.delay}`, color: this.colors.ink });
-      if (line.muted) badges.push({ text: 'MUTE', color: this.colors.inkSoft });
+      if (line.muted) badges.push({ text: 'mute', color: this.colors.inkSoft });
 
       let bx = mid.x;
       let by = mid.y - 9;
@@ -457,7 +457,7 @@ export class Renderer {
 
     const readout = nodeReadout(node, patch);
     const onBand = this.onColor(node.type);
-    this.text((node.label || meta.label).toUpperCase(), r.x + 6, r.y + band - 4.5, {
+    this.text(node.label || meta.label, r.x + 6, r.y + band - 4.5, {
       size: 9,
       weight: 700,
       color: onBand,

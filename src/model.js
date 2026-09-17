@@ -121,15 +121,15 @@ export function connect(patch, fromId, toId, overrides) {
  * "A:1,4 B:10".
  */
 export function channelSummary(line) {
-  if (line.channelMode !== 'set') return 'INHERIT';
-  if (line.channels.length === 0) return 'NONE';
+  if (line.channelMode !== 'set') return 'inherit';
+  if (line.channels.length === 0) return 'none';
   const bySlot = new Map();
   for (const c of line.channels) {
     const slot = asSlot(c.out);
     if (!bySlot.has(slot)) bySlot.set(slot, []);
     bySlot.get(slot).push(c.ch);
   }
-  if (bySlot.size === 1) return `CH ${[...bySlot.values()][0].join(',')}`;
+  if (bySlot.size === 1) return `ch ${[...bySlot.values()][0].join(',')}`;
   return [...bySlot.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([slot, chans]) => `${slot}:${chans.join(',')}`)
