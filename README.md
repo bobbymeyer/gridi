@@ -28,7 +28,7 @@ Any static server works. Web MIDI needs a **secure context**, so use
 it either.
 
 ```sh
-npm test           # 196 unit tests, no dependencies
+npm test           # 220 unit tests, no dependencies
 ```
 
 The synth is also checked by ear, or rather by measurement. Open
@@ -60,6 +60,7 @@ Windows — and have the DAW listen on it. There is no direct app-to-app route.
 |---|---|
 | **Pulse** | Root clock. Emits on a beat at project BPM, and owns the feel: division, swing, polyrhythm ratio, humanise and Euclidean gating. Feel lives here, never in the grid geometry. |
 | **MIDI In** | A note played on an attached keyboard sends a pulse from here. The pitch can retune everything downstream, transpose it, or be ignored. |
+| **LFO** | Sends a moving value down its lines many times a beat: sine, triangle, ramp, saw, square, random or drift, over a cycle measured in bars. A pulse patched in restarts the shape. |
 | **Split** | Sends one pulse down every outgoing line at once. Optional stagger for flams. |
 | **Logic** | Coincidence gate. Fires when pulses line up inside a window: AND, OR, XOR or N-of. |
 | **Chance** | Lets a pulse through a set percentage of the time. Drift mode nudges the odds after each result. |
@@ -248,6 +249,32 @@ engine.** The built-in voices are for sketching a patch, not performing it. For
 heavy synthesis, drive a DAW or a hardware instrument over MIDI, where it will
 run far better.
 
+## Waves travel the lines too
+
+A pulse is a moment; a wave is a value. Both go down the same lines and pick up
+the same channels, key and delay, because routing belongs to the line whatever
+is moving along it.
+
+An LFO samples its shape many times a beat — MIDI cannot carry a continuous
+value, so "continuous" means densely sampled, which is what every sequencer
+means by an LFO to CC. Each sample travels the LFO's lines as a wave, and a
+**Param node** is what turns one into a controller or a parameter change. So an
+LFO names no destination of its own: the line it feeds decides where the value
+lands, exactly as it does for a note.
+
+What a wave cannot do is trigger anything. At two dozen samples a beat, a wave
+reaching a Note node would be two dozen notes, so the nodes that are about *when*
+something happens — Note, Voice, Logic, Chance, Router — let waves go by. Split
+carries them, Key and Param act on them.
+
+Measured on the running app: a sine over one bar, sampled 24 times a beat into
+CC 74, covered its full range with a largest step between consecutive values of
+**3 out of 127**. The same clock played notes on the same channel throughout.
+
+The random shapes are hashed from the cycle number rather than carried as state,
+so an LFO resumes mid-song exactly as it would have run, and two LFOs set to
+Random do not move together.
+
 ## Lines are objects, not drawings
 
 A line is not a rendered edge with an arrow on it. It carries state, and that
@@ -366,8 +393,6 @@ Dark mode included, because nobody performs under a white screen.
 - MIDI clock in/out and external sync.
 - Pitch bend, aftertouch and program change. Control change is the only message
   a Param node sends.
-- An LFO. Modulation is step-wise today: a Param node changes a value when a
-  pulse arrives, so filter sweeps and vibrato come out as staircases.
 - Filter types beyond low-pass.
 - Audio-thread load is not directly observable from a page, so the polyphony
   figures above come from main-thread timing, offline renders and the engine's

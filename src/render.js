@@ -9,6 +9,7 @@ import { typeMeta } from './nodes.js';
 import { DIVISIONS, euclid, patternString } from './rhythm.js';
 import { SCALES, NOTE_NAMES } from './music.js';
 import { WAVE_LABELS } from './voice.js';
+import { SHAPES, RATES } from './lfo.js';
 import { outgoing, incoming, channelSummary } from './model.js';
 import { clamp } from './util.js';
 import { LIMITS } from './limits.js';
@@ -41,6 +42,13 @@ export function nodeReadout(node, patch) {
         ? patternString(euclid(p.euclidPulses, p.euclidSteps, p.euclidRotate)).slice(0, 16)
         : `${feel} · CH ${p.channel}`;
       return { primary, secondary, muted: !p.running };
+    }
+    case 'lfo': {
+      const rate = RATES[p.rate]?.label ?? p.rate;
+      return {
+        primary: (SHAPES[p.shape] ?? p.shape).toUpperCase(),
+        secondary: `${rate} \u00b7 ${p.min}\u2013${p.max}`,
+      };
     }
     case 'input': {
       const labels = { key: 'SETS KEY', transpose: 'TRANSPOSE', none: 'GATE' };
@@ -156,7 +164,12 @@ export class Renderer {
   addPulse(evt) {
     const delaySec = evt.arriveTime - (evt.fromTime ?? evt.arriveTime);
     const travel = clamp(delaySec || PULSE_MIN, PULSE_MIN, PULSE_MAX);
-    this.pulses.push({ lineId: evt.lineId, start: evt.arriveTime - travel, end: evt.arriveTime });
+    this.pulses.push({
+      lineId: evt.lineId,
+      start: evt.arriveTime - travel,
+      end: evt.arriveTime,
+      wave: Boolean(evt.wave),
+    });
     const over = this.pulses.length - LIMITS.visualPulses;
     if (over > 0) this.pulses.splice(0, over);
   }
@@ -377,8 +390,10 @@ export class Renderer {
       const t = span > 0 ? (now - pulse.start) / span : 1;
       if (t < 0 || t > 1.02) continue;
       const p = pointAlongPath(points, clamp(t, 0, 1));
-      const size = 9 / Math.max(view.zoom, 0.6);
-      ctx.fillStyle = this.colors.red;
+      // A wave is a stream of small marks rather than one bold one: what runs
+      // down the line is a value, not an event.
+      const size = (pulse.wave ? 5 : 9) / Math.max(view.zoom, 0.6);
+      ctx.fillStyle = pulse.wave ? this.colors.blue : this.colors.red;
       ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
   }

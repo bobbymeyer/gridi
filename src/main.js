@@ -38,6 +38,7 @@ const state = {
   lastNotes: new Map(), // nodeId -> text, for the "now plays" readout
   lastCC: new Map(), // nodeId -> text, for the CC readout
   lastPlayed: null, // the most recent note in from a keyboard
+  lastWave: new Map(), // nodeId -> the value an LFO is putting out
   log: [],
 };
 
@@ -110,7 +111,10 @@ const engine = new Engine({
     } else if (evt.kind === 'cc') {
       const where = evt.sent.length ? evt.sent.join(' ') : 'nowhere';
       state.lastCC.set(evt.nodeId, `${evt.value} → ${where}`);
-      if (evt.sent.length) pushLog(`CC${evt.cc} ${evt.value} → ${where}`);
+      // An LFO sends dozens a second; logging each would bury everything else.
+      if (evt.sent.length && !evt.fromWave) pushLog(`CC${evt.cc} ${evt.value} → ${where}`);
+    } else if (evt.kind === 'wave') {
+      state.lastWave.set(evt.nodeId, evt.value);
     }
   },
 });
@@ -183,6 +187,7 @@ function loadPatch(patch, { keepHistory = false } = {}) {
   state.selection = { kind: 'none', id: null, hoverPort: null };
   state.lastNotes.clear();
   state.lastCC.clear();
+  state.lastWave.clear();
   renderer.clearMotion();
   fitView();
   syncHeader();
@@ -270,6 +275,20 @@ const inspector = new Inspector($('inspector'), {
   getReadout: (node, key) => {
     if (key === 'pattern') {
       return patternString(euclid(node.params.euclidPulses, node.params.euclidSteps, node.params.euclidRotate));
+    }
+    if (key === 'value') {
+      const now = state.lastWave.get(node.id);
+      return now === undefined ? 'stopped' : now.toFixed(1);
+    }
+    if (key === 'wired') {
+      const fed = state.patch.lines
+        .filter((l) => l.from === node.id)
+        .map((l) => nodeById(state.patch, l.to))
+        .filter(Boolean);
+      if (!fed.length) return 'nothing yet';
+      const useful = fed.filter((n) => n.type === 'param' || n.type === 'split' || n.type === 'key');
+      if (!useful.length) return `${typeMeta(fed[0].type).label} — ignores waves`;
+      return useful.map((n) => n.label || typeMeta(n.type).label).join(', ');
     }
     if (key === 'played') {
       const played = state.lastPlayed;

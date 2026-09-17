@@ -17,6 +17,7 @@ import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
 import { PPQN, DEFAULT_SLOT } from './midi.js';
 import { ClockFollower } from './sync.js';
+import { lfoAt, resolutionBeats } from './lfo.js';
 
 export const LOOKAHEAD = 0.14; // seconds of future we schedule each tick
 export const TICK_MS = 25;
@@ -249,6 +250,7 @@ export class Engine {
     const horizon = now + LOOKAHEAD;
 
     this.scheduleClock(patch, horizon, now);
+    this.scheduleWaves(patch, horizon, now);
     this.scheduleEmitters(patch, horizon);
     const processed = this.drain(patch, horizon);
     this.eventRate.add(now, processed);
@@ -289,6 +291,51 @@ export class Engine {
       this.midi.sendClock(Math.max(time, now));
       this.clockPulse += 1;
     }
+  }
+
+  /**
+   * LFOs put a value on their lines many times a beat.
+   *
+   * A wave travels the same lines a pulse does and picks up the same channels
+   * and key, because routing belongs to the line whatever is moving along it.
+   * What it cannot do is trigger anything: at two dozen samples a beat, a wave
+   * reaching a Note node would be two dozen notes. So triggering nodes ignore
+   * waves, Split carries them, and a Param node is what turns one into a
+   * controller or a parameter change.
+   */
+  scheduleWaves(patch, horizon, now) {
+    for (const node of patch.nodes) {
+      if (node.type !== 'lfo') continue;
+      const step = resolutionBeats(node.params.resolution);
+      const state = this.state(`lfo:${node.id}`, { nextBeat: null, anchor: 0 });
+      if (state.nextBeat === null) {
+        state.nextBeat = Math.ceil(Math.max(0, this.timeToBeat(now)) / step) * step;
+      }
+
+      for (let guard = 0; guard < 512; guard += 1) {
+        const time = this.beatToTime(state.nextBeat);
+        if (time > horizon) break;
+        const value = lfoAt(node.params, state.nextBeat - state.anchor, this.seedFor(node.id));
+        this.emitWave(patch, node, value, Math.max(time, now));
+        state.nextBeat += step;
+      }
+    }
+  }
+
+  /** A stable seed per node, so two random LFOs do not move together. */
+  seedFor(id) {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i += 1) {
+      h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+    }
+    return (h >>> 0) % 100000;
+  }
+
+  emitWave(patch, node, value, at) {
+    const ctx = this.initialContext(patch, node);
+    ctx.wave = value;
+    this.onFire({ nodeId: node.id, time: at, kind: 'wave', value });
+    this.send(patch, node.id, ctx, at, 0);
   }
 
   scheduleEmitters(patch, horizon) {
@@ -422,15 +469,55 @@ export class Engine {
       const next = this.applyLine(ctx, line);
       this.queue.push({ time: arrive, kind: 'arrive', nodeId: line.to, lineId: line.id, ctx: next, hops: hops + 1 });
       // Visual travel is decoupled: the dot lands exactly when the sound does.
-      this.onPulse({ lineId: line.id, fromTime: time, arriveTime: arrive, fromNode: nodeId, toNode: line.to });
+      this.onPulse({
+        lineId: line.id,
+        fromTime: time,
+        arriveTime: arrive,
+        fromNode: nodeId,
+        toNode: line.to,
+        wave: ctx.wave !== undefined,
+      });
     });
   }
 
   handleArrive(patch, evt) {
     const node = nodeById(patch, evt.nodeId);
     if (!node) return;
+    if (evt.ctx.wave !== undefined) {
+      this.handleWave(patch, node, evt);
+      return;
+    }
     const handler = this[`on_${node.type}`];
     if (handler) handler.call(this, patch, node, evt);
+  }
+
+  /**
+   * A wave arriving somewhere. Only the nodes that can make sense of a value
+   * without a moment attached act on it; the rest let it go by.
+   */
+  handleWave(patch, node, evt) {
+    if (node.type === 'split') {
+      this.send(patch, node.id, evt.ctx, evt.time, evt.hops, node.params.stagger);
+      return;
+    }
+    if (node.type === 'key') {
+      this.on_key(patch, node, evt);
+      return;
+    }
+    if (node.type === 'param') {
+      this.on_param(patch, node, evt);
+      return;
+    }
+    // Everything else — notes, voices, gates, routers, chance — is about when
+    // something happens, which a wave does not carry.
+  }
+
+  /** A pulse arriving at an LFO restarts its shape, so it can be locked to a bar. */
+  on_lfo(patch, node, evt) {
+    if (!node.params.reset) return;
+    const state = this.state(`lfo:${node.id}`, { nextBeat: null, anchor: 0 });
+    state.anchor = this.timeToBeat(evt.time);
+    this.onFire({ nodeId: node.id, time: evt.time, kind: 'thru' });
   }
 
   on_split(patch, node, evt) {
@@ -581,7 +668,11 @@ export class Engine {
     if (hi < lo) [lo, hi] = [hi, lo];
 
     let value;
-    if (node.params.mode === 'sequence') {
+    if (ctx.wave !== undefined) {
+      // The wave already carries a shaped value in its own range; the node's
+      // mode is about generating one, which is not needed here.
+      value = ctx.wave;
+    } else if (node.params.mode === 'sequence') {
       const values = parseValues(node.params.values);
       value = values[wrap(s.index, values.length)];
       s.index = wrap(s.index + 1, values.length);
@@ -619,6 +710,7 @@ export class Engine {
         cc: clamp(Math.round(node.params.cc), 0, 127),
         value: value7,
         sent,
+        fromWave: ctx.wave !== undefined,
       });
       this.send(patch, node.id, ctx, evt.time, evt.hops);
       return;

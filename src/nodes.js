@@ -7,6 +7,7 @@
 import { SCALE_KEYS, SCALES, DEGREE_MODES, NOTE_NAMES } from './music.js';
 import { DIVISION_KEYS, DIVISIONS } from './rhythm.js';
 import { WAVEFORMS, WAVE_LABELS } from './voice.js';
+import { SHAPES, RATES, MIN_RESOLUTION, MAX_RESOLUTION } from './lfo.js';
 
 const scaleOptions = () => SCALE_KEYS.map((k) => ({ value: k, label: SCALES[k].label }));
 const rootOptions = () => NOTE_NAMES.map((n, i) => ({ value: i, label: n }));
@@ -14,6 +15,8 @@ const divisionOptions = () => DIVISION_KEYS.map((k) => ({ value: k, label: DIVIS
 const degreeModeOptions = () =>
   Object.entries(DEGREE_MODES).map(([value, label]) => ({ value, label }));
 const waveOptions = () => WAVEFORMS.map((w) => ({ value: w, label: WAVE_LABELS[w] }));
+const shapeOptions = () => Object.entries(SHAPES).map(([value, label]) => ({ value, label }));
+const rateOptions = () => Object.entries(RATES).map(([value, r]) => ({ value, label: r.label }));
 
 
 export const NODE_TYPES = {
@@ -355,6 +358,57 @@ export const NODE_TYPES = {
     ],
   },
 
+  lfo: {
+    label: 'LFO',
+    role: 'Moving value',
+    color: 'blue',
+    glyph: 'curve',
+    inputs: 1,
+    outputs: 'many',
+    blurb: 'Sends a moving value down its lines many times a beat, so a sweep is a sweep and not a staircase.',
+    defaults: {
+      shape: 'sine',
+      rate: '1bar',
+      phase: 0,
+      depth: 1,
+      min: 0,
+      max: 127,
+      resolution: 24,
+      reset: true,
+      scaleMode: 'project',
+      scale: 'minPent',
+      root: 0,
+      channel: 1,
+      velocity: 100,
+    },
+    params: [
+      { key: 'shape', label: 'Shape', type: 'select', options: shapeOptions },
+      { key: 'rate', label: 'Cycle', type: 'select', options: rateOptions, hint: 'One turn of the shape, in musical time.' },
+      { key: 'phase', label: 'Phase', type: 'slider', min: 0, max: 1, step: 0.01, format: 'percent' },
+      { key: 'depth', label: 'Depth', type: 'slider', min: 0, max: 1, step: 0.01, format: 'percent' },
+      { key: 'min', label: 'From', type: 'number', min: 0, max: 127, step: 1 },
+      { key: 'max', label: 'To', type: 'number', min: 0, max: 127, step: 1 },
+      {
+        key: 'resolution',
+        label: 'Steps',
+        type: 'number',
+        min: MIN_RESOLUTION,
+        max: MAX_RESOLUTION,
+        step: 1,
+        hint: 'Values sent per beat. Higher is smoother and busier on the wire.',
+      },
+      { key: 'reset', label: 'Reset on pulse', type: 'toggle', hint: 'Patch a clock in to restart the shape.' },
+      { key: 'value', label: 'Now', type: 'readout' },
+      {
+        key: 'wired',
+        label: 'Goes to',
+        type: 'readout',
+        hint: 'Patch this into a Param node — that is what decides where the value lands.',
+      },
+      { key: 'channel', label: 'Base ch', type: 'number', min: 1, max: 16, step: 1, group: 'Signal' },
+    ],
+  },
+
   param: {
     label: 'Param',
     role: 'Modulator',
@@ -492,6 +546,7 @@ export const MODULATABLE = {
   ],
   param: ['amount'],
   key: ['root', 'transpose'],
+  lfo: ['phase', 'depth', 'min', 'max', 'resolution'],
 };
 
 export function typeMeta(type) {
