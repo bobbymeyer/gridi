@@ -35,6 +35,7 @@ const state = {
   ui: { placing: null, ghost: null, pendingFrom: null, pendingTo: null },
   drag: null,
   lastNotes: new Map(), // nodeId -> text, for the "now plays" readout
+  lastCC: new Map(), // nodeId -> text, for the CC readout
   log: [],
 };
 
@@ -93,6 +94,10 @@ const engine = new Engine({
       pushLog(`${text} → ${evt.notes.map((n) => (n.ch ? `CH${n.ch}` : 'VOICE')).join(' ')}`);
     } else if (evt.kind === 'key') {
       pushLog(`KEY → ${keyName(evt.root, evt.scale).toUpperCase()}`);
+    } else if (evt.kind === 'cc') {
+      const where = evt.sent.length ? evt.sent.join(' ') : 'nowhere';
+      state.lastCC.set(evt.nodeId, `${evt.value} → ${where}`);
+      if (evt.sent.length) pushLog(`CC${evt.cc} ${evt.value} → ${where}`);
     }
   },
 });
@@ -164,6 +169,7 @@ function loadPatch(patch, { keepHistory = false } = {}) {
   state.patch = patch;
   state.selection = { kind: 'none', id: null, hoverPort: null };
   state.lastNotes.clear();
+  state.lastCC.clear();
   renderer.clearMotion();
   fitView();
   syncHeader();
@@ -232,7 +238,7 @@ const inspector = new Inspector($('inspector'), {
     // it was pointed at, so give it a sensible starting point instead of a stale one.
     if (node.type === 'param' && key === 'scope') {
       node.params.param = value === 'signal' ? 'velocity' : '';
-      if (value === 'signal') node.params.target = '';
+      if (value !== 'node') node.params.target = '';
     }
     save();
   },
@@ -251,6 +257,11 @@ const inspector = new Inspector($('inspector'), {
   getReadout: (node, key) => {
     if (key === 'pattern') {
       return patternString(euclid(node.params.euclidPulses, node.params.euclidSteps, node.params.euclidRotate));
+    }
+    if (key === 'ccTarget') {
+      const heard = state.lastCC.get(node.id);
+      if (heard) return heard;
+      return 'whatever channels the line carries';
     }
     if (key === 'resolved') {
       const heard = state.lastNotes.get(node.id);

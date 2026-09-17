@@ -61,6 +61,7 @@ export class MidiOut {
     this.slots = new Map(SLOTS.map((slot) => [slot, { portId: null, clock: true }]));
     this.sounding = new Set(); // "slot:ch:note" currently expected to be down
     this.pendingOffs = []; // note-offs not yet handed to a port
+    this.lastControl = new Map(); // "slot:ch:cc" -> last value sent
     this.rates = new Map(SLOTS.map((slot) => [slot, new RateMeter()]));
   }
 
@@ -91,6 +92,7 @@ export class MidiOut {
     const binding = this.slots.get(slot);
     if (binding.portId === portId) return;
     if (binding.portId) this.silence(slot); // do not strand notes on the old device
+    this.lastControl.clear();
     binding.portId = portId || null;
     this.timeOffset = null; // a new port starts from a fresh reading
     this.onChange();
@@ -280,7 +282,7 @@ export class MidiOut {
     // gets its own budget, since each has its own bandwidth.
     const now = this.clock.now();
     const rate = this.rates.get(where);
-    if (rate.rate(now) > LIMITS.midiPerSecond) {
+    if (rate.rate(now) >= LIMITS.midiPerSecond) {
       this.governor?.trip('midi', now, `notes dropped on output ${where}`);
       return;
     }
@@ -300,6 +302,48 @@ export class MidiOut {
     }
     this.sounding.add(key);
     this.pendingOffs.push({ key, slot: where, ch, note: n, start: at, time: end, done: false });
+  }
+
+  /**
+   * A control change.
+   *
+   * Repeats are dropped. A modulator stepping through a sequence or drifting
+   * within a range lands on the same value often, and a controller that has not
+   * moved is worth no bytes at all — CC is the usual reason a MIDI cable is
+   * saturated.
+   *
+   * Unlike a note-off, a CC may be thrown away under load: a dropped one leaves
+   * a value briefly stale, where a dropped note-off leaves a note sounding for
+   * good. So this goes through the same throttle as note-ons.
+   *
+   * @returns {boolean} whether anything was sent
+   */
+  sendControl({ slot = DEFAULT_SLOT, channel, controller, value, at }) {
+    const where = asSlot(slot);
+    const out = this.portFor(where);
+    if (!out) return false;
+    const ch = clamp(Math.round(channel), 1, 16) - 1;
+    const cc = clamp(Math.round(controller), 0, 127);
+    const v = clamp(Math.round(value), 0, 127);
+
+    const key = `${where}:${ch}:${cc}`;
+    if (this.lastControl.get(key) === v) return false;
+
+    const now = this.clock.now();
+    const rate = this.rates.get(where);
+    if (rate.rate(now) >= LIMITS.midiPerSecond) {
+      this.governor?.trip('midi', now, `controllers dropped on output ${where}`);
+      return false;
+    }
+    rate.add(now, 1);
+
+    try {
+      out.send([0xb0 | ch, cc, v], this.toMidiTime(at));
+    } catch {
+      return false; // port closed mid-send
+    }
+    this.lastControl.set(key, v);
+    return true;
   }
 
   /** Hand one queued note-off to its device, optionally earlier than planned. */
@@ -352,6 +396,11 @@ export class MidiOut {
       /* ignore */
     }
     this.pendingOffs = this.pendingOffs.filter((off) => off.slot !== slot);
+    // The device's controllers are no longer where we left them, so the next
+    // send must go out even if the value looks unchanged.
+    for (const key of [...this.lastControl.keys()]) {
+      if (key.startsWith(`${slot}:`)) this.lastControl.delete(key);
+    }
   }
 
   /** Silence every device. */

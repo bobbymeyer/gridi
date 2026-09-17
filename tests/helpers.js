@@ -11,6 +11,11 @@ export function fakeMidi() {
       this.notes.push({ slot, ch: channel, note, vel: velocity, at, duration });
     },
     noteOff() {},
+    controls: [],
+    sendControl({ slot = 'A', channel, controller, value, at }) {
+      this.controls.push({ slot, ch: channel, cc: controller, value, at });
+      return true;
+    },
     allOff() { this.messages.push({ type: 'allOff' }); },
     flush() {},
     sendClock(at) { this.messages.push({ type: 'clock', at }); },

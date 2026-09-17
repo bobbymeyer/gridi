@@ -73,6 +73,9 @@ export function nodeReadout(node, patch) {
       };
     }
     case 'param': {
+      if (p.scope === 'midi') {
+        return { primary: `CC ${clamp(Math.round(p.cc), 0, 127)}`, secondary: `MIDI · ${p.mode.toUpperCase()}` };
+      }
       const target = patch.nodes.find((n) => n.id === p.target);
       const where = p.scope === 'signal' ? 'SIGNAL' : (target ? typeMeta(target.type).label.toUpperCase() : 'NO TARGET');
       return { primary: (p.param || '—').toUpperCase(), secondary: `${where} · ${p.mode.toUpperCase()}` };

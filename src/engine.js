@@ -471,12 +471,18 @@ export class Engine {
 
     const readCurrent = () => {
       if (node.params.scope === 'signal') return ctx[key] ?? 0;
+      if (node.params.scope === 'midi') return s.lastValue ?? 0;
       const target = nodeById(patch, node.params.target);
       return target ? Number(target.params[key]) || 0 : 0;
     };
 
     let lo = Number(node.params.min);
     let hi = Number(node.params.max);
+    if (node.params.scope === 'midi') {
+      // A controller is seven bits, whatever the node was set to.
+      lo = clamp(lo, 0, 127);
+      hi = clamp(hi, 0, 127);
+    }
     if (node.params.scope === 'node') {
       const spec = paramSpec(nodeById(patch, node.params.target)?.type, key);
       if (spec && Number.isFinite(spec.min)) lo = Math.max(lo, spec.min);
@@ -500,6 +506,34 @@ export class Engine {
       const span = hi - lo;
       const raw = readCurrent() + node.params.amount;
       value = span > 0 ? lo + wrap(raw - lo, span + 1) : lo;
+    }
+
+    if (node.params.scope === 'midi') {
+      // The line decides where a CC goes, exactly as it decides where a note
+      // goes, so a controller follows the instrument it belongs to.
+      const value7 = clamp(Math.round(value), 0, 127);
+      s.lastValue = value7;
+      const sent = [];
+      for (const chan of ctx.channels) {
+        const went = this.midi.sendControl({
+          slot: chan.out,
+          channel: chan.ch,
+          controller: node.params.cc,
+          value: value7,
+          at: evt.time,
+        });
+        if (went) sent.push(`${chan.out}:${chan.ch}`);
+      }
+      this.onFire({
+        nodeId: node.id,
+        time: evt.time,
+        kind: 'cc',
+        cc: clamp(Math.round(node.params.cc), 0, 127),
+        value: value7,
+        sent,
+      });
+      this.send(patch, node.id, ctx, evt.time, evt.hops);
+      return;
     }
 
     if (key) {
