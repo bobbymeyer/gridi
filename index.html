@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRIDI — Grid Pulse Sequencer</title>
+<meta name="description" content="A spatial sequencer for generative MIDI and in-browser synthesis. Place nodes on a grid, patch them with lines, and let pulses do the rest.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e1251b'/%3E%3Crect x='6' y='6' width='8' height='8' fill='%23fff'/%3E%3Crect x='18' y='18' width='8' height='8' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles/app.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="head">
+    <div class="head__mark">
+      <b>Gridi</b>
+      <span>Grid Pulse Sequencer</span>
+    </div>
+
+    <div class="transport">
+      <button class="btn-play" id="play" aria-pressed="false">Play</button>
+    </div>
+
+    <div class="mod">
+      <span class="micro">Position</span>
+      <div class="readout"><span id="position">001.1</span></div>
+    </div>
+
+    <div class="mod">
+      <span class="micro">Tempo</span>
+      <div class="mod__row">
+        <input class="bpm-input" id="bpm" type="number" min="20" max="300" step="1" value="104" aria-label="Beats per minute">
+        <span class="micro">BPM</span>
+      </div>
+    </div>
+
+    <div class="mod">
+      <span class="micro">Project key</span>
+      <div class="mod__row">
+        <select class="field" id="root" aria-label="Key"></select>
+        <select class="field" id="scale" aria-label="Scale"></select>
+      </div>
+    </div>
+
+    <div class="mod mod--grow">
+      <span class="micro">MIDI outputs</span>
+      <div class="mod__row">
+        <button class="btn" id="midi-enable">Enable MIDI</button>
+        <div class="seg" id="slot-picker" role="group" aria-label="Output slot"></div>
+        <select class="field" id="midi-out" aria-label="Device for the selected output" style="max-width:130px" disabled></select>
+        <button class="btn" id="slot-clock" aria-pressed="true" title="Send clock to this output">Clk A</button>
+        <button class="btn" id="clock-out" aria-pressed="true" title="Send MIDI clock, start and stop at all, so receiving gear follows Gridi's tempo">Clock</button>
+        <button class="btn btn--red" id="panic" title="All notes off">Panic</button>
+      </div>
+    </div>
+
+    <div class="mod">
+      <span class="micro">MIDI in</span>
+      <div class="mod__row">
+        <select class="field" id="midi-in" aria-label="MIDI input device" style="max-width:120px" disabled></select>
+        <button class="btn" id="sync-ext" aria-pressed="false" title="Follow the incoming MIDI clock instead of the project tempo">Sync</button>
+      </div>
+    </div>
+
+  </header>
+
+  <div class="guard" id="guard" hidden role="status">
+    <div class="guard__mark">Limit</div>
+    <div class="guard__body">
+      <b id="guard-title"></b>
+      <p id="guard-detail"></p>
+      <p class="guard__scope" id="guard-scope"></p>
+    </div>
+    <button class="guard__close" id="guard-close" aria-label="Dismiss">&times;</button>
+  </div>
+
+  <div class="body">
+    <nav class="rail" aria-label="Node palette">
+      <div class="rail__head"><b>Nodes</b><span>Click to place</span></div>
+      <div id="palette"></div>
+      <p class="rail__note">
+        Drag from a node's right edge onto another node to patch them.
+        Lines carry the channels and the key.
+      </p>
+      <div class="rail__foot">
+        <span class="micro">Patch</span>
+        <div class="rail__buttons">
+          <button class="btn" id="new">New</button>
+          <button class="btn" id="demo">Demo</button>
+          <button class="btn" id="export">Save</button>
+          <button class="btn" id="import">Open</button>
+          <button class="btn" id="theme" title="Toggle theme">Dark</button>
+        </div>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <canvas id="canvas"></canvas>
+      <div class="stage__placing" id="placing" hidden></div>
+      <div class="stage__hint">
+        <span><b>Space</b> play</span>
+        <span><b>Right edge</b> patch</span>
+        <span><b>Drag empty</b> pan</span>
+        <span><b>Wheel</b> zoom</span>
+        <span><b>Del</b> remove</span>
+        <span><b>F</b> fit</span>
+      </div>
+    </section>
+
+    <aside class="pane" aria-label="Inspector">
+      <div class="pane__head"><b>Inspector</b><span id="sel-kind">Nothing</span></div>
+      <div class="pane__body" id="inspector"></div>
+      <div class="pane__actions">
+        <button class="btn" id="duplicate">Duplicate</button>
+        <button class="btn btn--red" id="delete">Delete</button>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="foot">
+    <span class="foot__dot" id="run-dot" data-on="false"></span>
+    <span id="status"><b>Ready.</b> Press play.</span>
+    <span class="foot__sep"></span>
+    <span class="foot__log" id="log">—</span>
+    <span class="foot__sep"></span>
+    <label class="foot__level">
+      <span>Level</span>
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" aria-label="Output level">
+    </label>
+    <span class="foot__sep"></span>
+    <span id="counts">0 nodes · 0 lines</span>
+  </footer>
+
+</div>
+<input type="file" id="file" accept="application/json,.json" hidden>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

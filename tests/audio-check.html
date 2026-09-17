@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Gridi — Voice Check</title>
+<link rel="stylesheet" href="../styles/app.css">
+<style>
+  body { padding: 0; overflow: auto; }
+  .wrap { max-width: 860px; padding: 28px 24px 60px; }
+  h1 { font: 700 30px/0.9 var(--font); letter-spacing: -0.03em; text-transform: uppercase; }
+  .lede { max-width: 56ch; margin: 12px 0 24px; font-size: 13px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; border-top: var(--rule-w) solid var(--rule); }
+  th { text-align: left; font: var(--micro); letter-spacing: var(--track); text-transform: uppercase;
+       color: var(--ink-soft); padding: 8px 10px 7px; border-bottom: var(--rule-w) solid var(--rule); }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--grid-module); font-size: 12px; vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag { display: inline-block; padding: 3px 7px; font: 700 10px/1 var(--font);
+         letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
+  .pass { background: var(--blue); }
+  .fail { background: var(--red); }
+  .total { margin: 22px 0 0; font: 700 17px/1 var(--font); text-transform: uppercase; letter-spacing: -0.01em; }
+  .group-row td { background: var(--paper-2); font: var(--micro); letter-spacing: var(--track);
+                  text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Voice Check</h1>
+  <p class="lede">
+    Renders the Voice node's real audio graph through an OfflineAudioContext and measures
+    the result, so the synth is checked by what it sounds like rather than by what its
+    parameters say. Needs a browser; the rest of the suite runs under <code>npm test</code>.
+  </p>
+  <table><thead><tr><th style="width:90px">Result</th><th>Check</th><th style="width:260px">Measured</th></tr></thead>
+  <tbody id="rows"></tbody></table>
+  <p class="total" id="total">Running…</p>
+</div>
+
+<script type="module">
+import { buildVoice } from '../src/audio.js';
+import { defaultParams } from '../src/nodes.js';
+
+const SR = 44100;
+const rows = document.getElementById('rows');
+let passed = 0;
+let failed = 0;
+
+/** Goertzel: how much energy sits at one frequency. */
+function energyAt(samples, freq) {
+  const coeff = 2 * Math.cos((2 * Math.PI * freq) / SR);
+  let s1 = 0;
+  let s2 = 0;
+  for (let i = 0; i < samples.length; i += 1) {
+    const s0 = samples[i] + coeff * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
+  return Math.sqrt(s1 * s1 + s2 * s2 - coeff * s1 * s2) / samples.length;
+}
+
+const rms = (a) => Math.sqrt(a.reduce((t, v) => t + v * v, 0) / a.length);
+
+async function render(overrides, { midi = 69, vel = 127, hold = 0.5, dur = 1.2 } = {}) {
+  const ctx = new OfflineAudioContext(1, Math.ceil(SR * dur), SR);
+  buildVoice(ctx, ctx.destination, { ...defaultParams('synth'), ...overrides }, midi, vel, 0, hold);
+  const buf = await ctx.startRendering();
+  return buf.getChannelData(0);
+}
+
+const slice = (d, from, to) => d.slice(Math.floor(SR * from), Math.floor(SR * to));
+
+function check(name, ok, measured) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><span class="tag ${ok ? 'pass' : 'fail'}">${ok ? 'Pass' : 'Fail'}</span></td>
+                  <td>${name}</td><td class="num">${measured}</td>`;
+  rows.append(tr);
+  if (ok) passed += 1; else failed += 1;
+}
+
+function group(title) {
+  const tr = document.createElement('tr');
+  tr.className = 'group-row';
+  tr.innerHTML = `<td colspan="3">${title}</td>`;
+  rows.append(tr);
+}
+
+// Flat settings, so a measurement reflects the oscillators and not the filter.
+const FLAT = {
+  attack: 0.005, decay: 0.01, sustain: 1, release: 0.05,
+  filterEnv: 0, cutoff: 12000, level: 1, aDetune: 0, bDetune: 0,
+};
+
+async function run() {
+  group('Oscillators');
+
+  const solo = slice(await render({ ...FLAT, aWave: 'sine', aLevel: 1, bLevel: 0 }), 0.1, 0.4);
+  check('Oscillator A alone sounds at the note it was given (A4)',
+    energyAt(solo, 440) > 0.4 && energyAt(solo, 220) < 0.01,
+    `440Hz ${energyAt(solo, 440).toFixed(3)} · 220Hz ${energyAt(solo, 220).toFixed(4)}`);
+
+  const both = slice(await render({
+    ...FLAT, aWave: 'sine', aLevel: 1, aOctave: 0, bWave: 'sine', bLevel: 1, bOctave: -1,
+  }), 0.1, 0.4);
+  check('Both oscillators sound at once, B an octave below A',
+    energyAt(both, 440) > 0.15 && energyAt(both, 220) > 0.15,
+    `440Hz ${energyAt(both, 440).toFixed(3)} · 220Hz ${energyAt(both, 220).toFixed(3)}`);
+
+  const semi = slice(await render({
+    ...FLAT, aLevel: 0, bWave: 'sine', bLevel: 1, bOctave: 0, bSemi: 7,
+  }), 0.1, 0.4);
+  check('A semitone offset transposes that oscillator only (+7 = E5)',
+    energyAt(semi, 659.255) > 0.4 && energyAt(semi, 440) < 0.01,
+    `659Hz ${energyAt(semi, 659.255).toFixed(3)}`);
+
+  const beat = await render({
+    ...FLAT, aWave: 'sine', aLevel: 1, aOctave: 0, aDetune: -10,
+    bWave: 'sine', bLevel: 1, bOctave: 0, bDetune: 10,
+  }, { hold: 1, dur: 1.4 });
+  const levels = [0.1, 0.2, 0.3, 0.4, 0.5].map((t) => rms(slice(beat, t, t + 0.05)));
+  check('Detuning the two oscillators apart makes them beat',
+    Math.max(...levels) - Math.min(...levels) > 0.1,
+    `swing ${(Math.max(...levels) - Math.min(...levels)).toFixed(3)}`);
+
+  const silent = await render({ ...FLAT, aLevel: 0, bLevel: 0 });
+  check('Both oscillators at zero level is silence',
+    rms(slice(silent, 0.1, 0.4)) < 0.001, rms(slice(silent, 0.1, 0.4)).toExponential(1));
+
+  group('Waveforms — harmonic content against theory');
+
+  // A sine has no harmonics; triangle falls as 1/n² on odd harmonics; square
+  // as 1/n on odd; sawtooth as 1/n on all.
+  const expected = {
+    sine: { h2: 0, h3: 0 },
+    triangle: { h2: 0, h3: 1 / 9 },
+    square: { h2: 0, h3: 1 / 3 },
+    sawtooth: { h2: 1 / 2, h3: 1 / 3 },
+  };
+  for (const [wave, want] of Object.entries(expected)) {
+    const d = slice(await render({ ...FLAT, aWave: wave, aLevel: 1, bLevel: 0 }), 0.1, 0.4);
+    const f1 = energyAt(d, 440);
+    const h2 = energyAt(d, 880) / f1;
+    const h3 = energyAt(d, 1320) / f1;
+    check(`${wave}: 2nd and 3rd harmonics match theory`,
+      Math.abs(h2 - want.h2) < 0.03 && Math.abs(h3 - want.h3) < 0.03,
+      `h2 ${h2.toFixed(3)} (want ${want.h2.toFixed(3)}) · h3 ${h3.toFixed(3)} (want ${want.h3.toFixed(3)})`);
+  }
+
+  group('Envelope');
+
+  const env = await render({
+    aWave: 'sine', aLevel: 1, bLevel: 0, aDetune: 0, level: 1,
+    attack: 0.2, decay: 0.1, sustain: 0.3, release: 0.1, filterEnv: 0, cutoff: 12000,
+  }, { hold: 0.6, dur: 1.2 });
+  const win = (t) => rms(slice(env, t, t + 0.02));
+  const peak = win(0.19);
+  const fractions = [win(0.02) / peak, win(0.1) / peak, win(0.18) / peak];
+  check('The attack rises steadily rather than lurching at the end',
+    fractions[0] > 0.05 && fractions[1] > 0.4 && fractions[1] < 0.7 && fractions[2] > 0.85,
+    fractions.map((f) => f.toFixed(2)).join(' → ') + ' of peak');
+  check('It holds at the sustain level while the gate is open',
+    Math.abs(win(0.45) / peak - 0.3) < 0.06, `${(win(0.45) / peak).toFixed(3)} of peak (want 0.300)`);
+  check('It is silent once the release has run',
+    win(0.85) < 0.002, win(0.85).toExponential(1));
+
+  const short = await render({
+    aWave: 'sine', aLevel: 1, bLevel: 0, aDetune: 0, level: 1,
+    attack: 0.2, decay: 0.1, sustain: 0.3, release: 0.1, filterEnv: 0, cutoff: 12000,
+  }, { hold: 0.05, dur: 0.8 });
+  check('A note cut off mid-attack releases from where it got to, and ends',
+    rms(slice(short, 0.04, 0.06)) > 0.001 && rms(slice(short, 0.3, 0.5)) < 0.002,
+    `at gate ${rms(slice(short, 0.04, 0.06)).toFixed(3)} · after ${rms(slice(short, 0.3, 0.5)).toExponential(1)}`);
+
+  group('Filter and levels');
+
+  const open = slice(await render({ ...FLAT, aWave: 'sawtooth', aLevel: 1, bLevel: 0, cutoff: 12000 }), 0.1, 0.4);
+  const shut = slice(await render({ ...FLAT, aWave: 'sawtooth', aLevel: 1, bLevel: 0, cutoff: 300 }), 0.1, 0.4);
+  check('Lowering the cutoff removes the upper harmonics',
+    energyAt(shut, 1320) < energyAt(open, 1320) * 0.5,
+    `3rd harmonic ${energyAt(open, 1320).toFixed(3)} open → ${energyAt(shut, 1320).toFixed(3)} shut`);
+
+  const loud = rms(slice(await render({ ...FLAT, aWave: 'sine', aLevel: 1, bLevel: 0 }, { vel: 127 }), 0.1, 0.4));
+  const soft = rms(slice(await render({ ...FLAT, aWave: 'sine', aLevel: 1, bLevel: 0 }, { vel: 32 }), 0.1, 0.4));
+  check('Velocity scales the output',
+    Math.abs(soft / loud - 32 / 127) < 0.02, `${soft.toFixed(3)} / ${loud.toFixed(3)} = ${(soft / loud).toFixed(3)}`);
+
+  const one = slice(await render({ ...FLAT, aWave: 'sine', aLevel: 1, bLevel: 0 }), 0.1, 0.4);
+  const two = slice(await render({
+    ...FLAT, aWave: 'sine', aLevel: 1, aOctave: 0, bWave: 'sine', bLevel: 1, bOctave: 0,
+  }), 0.1, 0.4);
+  const peakOf = (d) => d.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+  check('A second oscillator mixes in rather than pushing the level past one',
+    peakOf(two) <= peakOf(one) + 0.01,
+    `one ${peakOf(one).toFixed(3)} → two ${peakOf(two).toFixed(3)}`);
+
+  const total = document.getElementById('total');
+  total.textContent = failed === 0 ? `All ${passed} checks passed.` : `${failed} of ${passed + failed} checks failed.`;
+  total.style.color = failed === 0 ? 'var(--blue)' : 'var(--red)';
+  document.body.dataset.done = failed === 0 ? 'pass' : 'fail';
+}
+
+run().catch((err) => {
+  document.getElementById('total').textContent = `Could not run: ${err.message}`;
+  document.body.dataset.done = 'error';
+});
+</script>
+</body>
+</html>
