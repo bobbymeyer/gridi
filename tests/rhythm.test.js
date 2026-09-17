@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { euclid, patternString, stepBeats, stepOnsetBeats, emitterFiresOn } from '../src/rhythm.js';
+import {
+  euclid, patternString, stepBeats, stepOnsetBeats, emitterFiresOn,
+  gridBeats, cellsPerBar, GRID_KEYS, DEFAULT_GRID,
+} from '../src/rhythm.js';
 
 test('euclid spreads hits evenly', () => {
   assert.equal(patternString(euclid(3, 8)), 'x..x..x.'); // tresillo
@@ -51,4 +54,31 @@ test('euclid gating is off unless enabled', () => {
     true, false, false, true, false, false, true, false,
   ]);
   assert.equal(emitterFiresOn(8, on), true); // wraps
+});
+
+/* ------------------------------------------------------------- the grid */
+
+test('a cell is worth an eighth note until told otherwise', () => {
+  assert.equal(DEFAULT_GRID, '1/8');
+  assert.equal(gridBeats(DEFAULT_GRID), 0.5);
+  assert.equal(gridBeats(undefined), 0.5, 'and nonsense falls back to it');
+  assert.equal(gridBeats('1/3'), 0.5, 'as does a value that is not on offer');
+});
+
+test('refining the grid makes each cell worth less', () => {
+  assert.equal(gridBeats('1/4'), 1);
+  assert.equal(gridBeats('1/16'), 0.25);
+  assert.ok(gridBeats('1/32') < gridBeats('1/16'));
+  for (const key of GRID_KEYS) assert.ok(gridBeats(key) > 0, key);
+});
+
+test('the heavy rules are bar lines whatever the grid is set to', () => {
+  assert.equal(cellsPerBar('1/8'), 8); // four quarters, eight cells
+  assert.equal(cellsPerBar('1/16'), 16);
+  assert.equal(cellsPerBar('1/4'), 4);
+  for (const key of GRID_KEYS) {
+    const cells = cellsPerBar(key);
+    assert.equal(cells, Math.round(cells), `${key} lands between rules`);
+    assert.ok(Math.abs(cells * gridBeats(key) - 4) < 1e-9, `${key} is not a bar`);
+  }
 });

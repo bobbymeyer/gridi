@@ -11,7 +11,8 @@
 
 import { EventQueue, clamp, rng, wrap } from './util.js';
 import { resolveDegree, SCALES } from './music.js';
-import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds } from './rhythm.js';
+import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds, gridBeats } from './rhythm.js';
+import { lineCells } from './geometry.js';
 import { outgoing, incoming, nodeById } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
@@ -79,6 +80,7 @@ export class Engine {
     this.runtime = new Map(); // nodeId -> per-node mutable state
     this.buckets = new Map(); // logic-gate coincidence windows
     this.emitters = new Map(); // nodeId -> { step, scheduledBeat }
+    this.travel = new Map(); // lineId -> cached { key, beats } travel time
     this.random = rng(1);
 
     // Beat anchor. Changing BPM re-anchors here rather than rewinding the song.
@@ -458,13 +460,37 @@ export class Engine {
     this.send(patch, node.id, ctx, evt.time, 0);
   }
 
+  /**
+   * How long a pulse takes to walk a line, in beats.
+   *
+   * The line's length in grid cells times what a cell is worth. This is the
+   * whole of the idea: the patch is laid out in time as well as in space, and
+   * moving a node retimes the music. `line.delay` is added on top as a trim
+   * for anything the grid cannot say.
+   *
+   * Routing a line is cheap but not free and this runs per pulse, so the
+   * measurement is cached against the two nodes' positions -- drag either one
+   * and the key changes, which is exactly when the answer changes too.
+   */
+  travelBeats(patch, line) {
+    const from = nodeById(patch, line.from);
+    const to = nodeById(patch, line.to);
+    if (!from || !to) return 0;
+    const key = `${from.col},${from.row},${to.col},${to.row},${patch.grid}`;
+    const hit = this.travel.get(line.id);
+    if (hit && hit.key === key) return hit.beats;
+    const beats = lineCells(from, to) * gridBeats(patch.grid);
+    this.travel.set(line.id, { key, beats });
+    return beats;
+  }
+
   /** Push a pulse down every outgoing line, applying each line's own state. */
   send(patch, nodeId, ctx, time, hops, stagger = 0) {
     if (hops > MAX_HOPS) return;
     const lines = outgoing(patch, nodeId);
     lines.forEach((line, i) => {
       if (line.muted) return;
-      const delay = beatsToSeconds(line.delay + stagger * i, this.bpm);
+      const delay = beatsToSeconds(this.travelBeats(patch, line) + line.delay + stagger * i, this.bpm);
       const arrive = time + delay;
       const next = this.applyLine(ctx, line);
       this.queue.push({ time: arrive, kind: 'arrive', nodeId: line.to, lineId: line.id, ctx: next, hops: hops + 1 });
@@ -560,7 +586,7 @@ export class Engine {
     s.last = pick;
 
     const line = lines[pick];
-    const arrive = evt.time + beatsToSeconds(line.delay, this.bpm);
+    const arrive = evt.time + beatsToSeconds(this.travelBeats(patch, line) + line.delay, this.bpm);
     const next = this.applyLine(evt.ctx, line);
     this.queue.push({ time: arrive, kind: 'arrive', nodeId: line.to, lineId: line.id, ctx: next, hops: evt.hops + 1 });
     this.onPulse({ lineId: line.id, fromTime: evt.time, arriveTime: arrive, fromNode: node.id, toNode: line.to });

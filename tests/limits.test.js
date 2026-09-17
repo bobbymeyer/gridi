@@ -110,15 +110,23 @@ function harness(patch) {
   return { engine, audio, midi, governor, trips, notes: () => midi.notes.length, stopped: () => stopped };
 }
 
-/** A splitter wired back into itself: one pulse becomes two, then four... */
+/**
+ * A splitter wired back into itself: one pulse becomes two, then four...
+ *
+ * Distance is time, so a loop laid out across the grid throttles itself -- a
+ * round trip costs whatever its lines are worth, which is a real brake on this
+ * kind of patch. The guard still has to hold when the loop is tight and fast,
+ * so this one is drawn on the finest grid at the top of the tempo range.
+ */
 function feedbackPatch(branches = 2) {
   const p = createPatch('runaway');
-  p.bpm = 120;
+  p.bpm = 300;
+  p.grid = '1/32';
   const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/4' }));
-  const split = addNode(p, createNode('split', 5, 0));
+  const split = addNode(p, createNode('split', 10, 0));
   connect(p, clock.id, split.id);
   for (let i = 0; i < branches; i += 1) {
-    const n = addNode(p, createNode('note', 10, i * 4, { audition: false }));
+    const n = addNode(p, createNode('note', 20, i * 8, { audition: false }));
     connect(p, split.id, n.id);
     connect(p, n.id, split.id);
   }
@@ -129,7 +137,11 @@ test('a runaway patch is cut off rather than run at the ceiling forever', () => 
   const patch = feedbackPatch();
   const rig = harness(patch);
   rig.engine.start();
-  for (let i = 0; i < 60; i += 1) {
+  // A loop doubles once per round trip, and a round trip is now a distance.
+  // This one takes about a second, and after the queue is dumped it has to
+  // build back up before it blows again -- so catching *repeated* trouble
+  // takes half a minute of transport time rather than a second and a half.
+  for (let i = 0; i < 1200; i += 1) {
     rig.audio.t = i * 0.025;
     rig.engine.tick();
   }

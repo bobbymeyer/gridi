@@ -5,6 +5,7 @@ import {
   removeNode, removeLine, serialize, deserialize, demoPatch, outgoing, incoming,
   channelSummary,
 } from '../src/model.js';
+import { lineCells } from '../src/geometry.js';
 
 test('a new line inherits rather than overriding', () => {
   const line = createLine('a', 'b');
@@ -136,6 +137,33 @@ test('the demo patch is a working instrument', () => {
     assert.ok(incoming(p, node.id).length > 0, `${node.type} should be fed by something`);
   }
   assert.ok(p.lines.some((l) => l.channelMode === 'set'), 'demonstrates channels on a line');
-  assert.ok(p.lines.some((l) => l.delay > 0), 'demonstrates line delay');
+  // The demo used to lean on a line delay to flam its router branches. It
+  // gets that from the drawing now, so what it has to show is lines of
+  // different lengths feeding the same place.
+  const byNode = new Map(p.nodes.map((n) => [n.id, n]));
+  const lengths = p.lines.map((l) => lineCells(byNode.get(l.from), byNode.get(l.to)));
+  assert.ok(new Set(lengths).size > 1, 'demonstrates distance as timing');
   assert.ok(p.nodes.some((n) => n.type === 'key' && n.params.latch), 'demonstrates live key change');
+});
+
+/* ------------------------------------------------------- the patch grid */
+
+test('a new patch measures its cells in eighth notes', () => {
+  assert.equal(createPatch('x').grid, '1/8');
+});
+
+test('the grid survives a save and an open', () => {
+  const p = createPatch('grid');
+  p.grid = '1/16';
+  assert.equal(deserialize(serialize(p)).grid, '1/16');
+});
+
+test('a patch from before the grid existed opens on the default', () => {
+  const older = { name: 'old', bpm: 120, nodes: [], lines: [] };
+  assert.equal(deserialize(JSON.stringify(older)).grid, '1/8');
+});
+
+test('a grid value that is not on offer is refused, not trusted', () => {
+  const bogus = { name: 'b', grid: '1/5', nodes: [], lines: [] };
+  assert.equal(deserialize(JSON.stringify(bogus)).grid, '1/8');
 });

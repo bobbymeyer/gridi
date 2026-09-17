@@ -12,7 +12,7 @@ import {
 } from './model.js';
 import { typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES, noteName, resolveDegree } from './music.js';
-import { euclid, patternString } from './rhythm.js';
+import { euclid, patternString, GRID_KEYS } from './rhythm.js';
 import {
   CELL, screenToWorld, hitNode, hitOutPort, hitLine, snapCell, findFreeCell, nodeRect,
 } from './geometry.js';
@@ -322,6 +322,7 @@ function syncHeader() {
   syncMidiIn();
   $('root').value = String(state.patch.root);
   $('scale').value = state.patch.scale;
+  $('grid').value = state.patch.grid;
   $('counts').textContent = counts(state.patch);
   $('sel-kind').textContent =
     state.selection.kind === 'node'
@@ -919,6 +920,21 @@ function populateKeySelects() {
   });
   scale.addEventListener('change', () => {
     state.patch.scale = scale.value;
+    save();
+  });
+
+  // What one cell of the grid is worth. Changing it retimes every line in the
+  // patch at once and closes up the bar rules to match.
+  const grid = $('grid');
+  for (const key of GRID_KEYS) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    grid.append(opt);
+  }
+  grid.addEventListener('change', () => {
+    state.patch.grid = grid.value;
+    setStatus(`a cell is now ${grid.value} — every line in the patch is retimed.`, 'Grid:');
     save();
   });
 }

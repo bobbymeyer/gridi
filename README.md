@@ -22,6 +22,33 @@ npm test
 Open `http://localhost:8080/tests/audio-check.html` for the synth checks, which
 need a browser.
 
+## the grid
+
+A grid cell is worth a note value. A pulse crosses one cell in that much
+musical time, so how far a line runs is how long its pulses take to walk it.
+Moving a node retimes the patch.
+
+| Setting | Effect |
+| --- | --- |
+| Grid | What one cell is worth: 1/1 to 1/32, plus 1/4T, 1/8T, 1/16T. Default 1/8. |
+
+The field is ruled in three weights to match: light for the cell, medium for
+the beat, heavy for the bar. Refine the grid and the rules close up.
+
+Two things follow that are worth knowing before they surprise you.
+
+- **A Split fans out at one instant, but its branches land by their own
+  lengths.** Draw two branches level and they stay together; draw one a row
+  down and it flams. Logic needs its two feeds the same length, or the pulses
+  it is meant to catch together never coincide.
+- **A Param in Node scope writes when the pulse passes it, and its target
+  reads when its own pulse arrives.** The line between them now separates
+  those two moments, so a Param wants to sit close to what it modulates. Signal
+  scope rides with the pulse and is not affected.
+
+Select a line to see what it costs: the inspector gives its length in cells and
+in beats.
+
 ## nodes
 
 | Node | In | Out | Does |
@@ -156,7 +183,8 @@ A line carries state, not just a connection.
 | Channels | A set, each with its own output, transpose and velocity. One pulse fans out across all of them. |
 | Channel mode | Inherit passes on what arrived; Set here overrides from this line down. |
 | Scale and key | Same two modes. Set here retunes everything the line feeds. |
-| Delay | 0–4 beats. The only thing that shifts timing; grid distance never does. |
+| Travel | Read-only. The line's length in cells, and what that comes to in beats. |
+| Extra delay | 0–4 beats on top of the travel time, for anything the grid cannot say. |
 | Mute | Stops passing pulses without unpatching. |
 
 Scales: Major, Nat Minor, Harm Minor, Mel Minor, Dorian, Phrygian, Lydian,
@@ -201,6 +229,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Pan | Drag empty grid, or alt-drag |
 | Zoom | Wheel |
 | Fit to patch | F |
+| Set what a cell is worth | Grid, in the header |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -252,6 +281,16 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 4. On the LFO, set Cycle to the sweep length and From/To to the range.
 5. Patch a Pulse into the LFO to restart the sweep in time.
 
+### put two parts in step
+
+1. Patch a **Split** into two Note nodes.
+2. Put both Note nodes in the same row as each other. Equal lengths, so their
+   pulses arrive together.
+3. Drag one of them a row down and play it again: the line got longer, so that
+   part is now late. Select the line to see by how much.
+4. Use the **Grid** setting to scale the whole patch at once — 1/16 halves every
+   travel time, 1/4 doubles it.
+
 ### follow another sequencer
 
 1. Choose the master's port under **MIDI in**.
@@ -272,7 +311,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 220 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 235 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
