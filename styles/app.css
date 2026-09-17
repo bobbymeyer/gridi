@@ -5,8 +5,8 @@
    ========================================================================== */
 
 :root {
-  --paper: #f2f0ea;
-  --paper-2: #e7e4dc;
+  --paper: #ffffff;
+  --paper-2: #f0f0f0;
   --ink: #111111;
   --ink-soft: #6b6862;
   --red: #e1251b;
@@ -15,7 +15,7 @@
   --rule: #111111;
   --grid-fine: rgba(17, 17, 17, 0.13);
   --grid-module: rgba(17, 17, 17, 0.34);
-  --canvas: #f6f4ef;
+  --canvas: #fafafa;
 
   --rule-w: 2px;
   --unit: 8px;
@@ -27,14 +27,14 @@
 :root[data-theme="dark"] {
   --paper: #0f0f0f;
   --paper-2: #1a1a1a;
-  --ink: #f2f0ea;
+  --ink: #f5f5f5;
   --ink-soft: #8d8a84;
   --red: #ff3b2f;
   --blue: #5470ff;
   --yellow: #ffd02a;
-  --rule: #f2f0ea;
-  --grid-fine: rgba(242, 240, 234, 0.11);
-  --grid-module: rgba(242, 240, 234, 0.3);
+  --rule: #f5f5f5;
+  --grid-fine: rgba(245, 245, 245, 0.11);
+  --grid-module: rgba(245, 245, 245, 0.3);
   --canvas: #131313;
 }
 

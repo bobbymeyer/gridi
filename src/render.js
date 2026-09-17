@@ -124,9 +124,9 @@ export class Renderer {
     this.colors = {
       ink: v('--ink', '#111'),
       inkSoft: v('--ink-soft', '#6b6862'),
-      paper: v('--paper', '#f2f0ea'),
-      paper2: v('--paper-2', '#e7e4dc'),
-      canvas: v('--canvas', '#f6f4ef'),
+      paper: v('--paper', '#ffffff'),
+      paper2: v('--paper-2', '#f0f0f0'),
+      canvas: v('--canvas', '#fafafa'),
       red: v('--red', '#e1251b'),
       blue: v('--blue', '#1b3fd8'),
       yellow: v('--yellow', '#ffc500'),
