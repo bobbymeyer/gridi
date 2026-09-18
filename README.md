@@ -25,29 +25,23 @@ need a browser.
 ## the grid
 
 A grid cell is worth a note value. A pulse crosses one cell in that much
-musical time, so how far a line runs is how long its pulses take to walk it.
+musical time, so a line's length is how long its pulses take to walk it.
 Moving a node retimes the patch.
 
 | Setting | Effect |
 | --- | --- |
 | Grid | What one cell is worth: 1/1 to 1/32, plus 1/4T, 1/8T, 1/16T. Default 1/16. |
 
-The field is ruled in three weights to match: light for the cell, medium for
-the beat, heavy for the bar. Refine the grid and the rules close up.
+The field is ruled in three weights: light for the cell, medium for the beat,
+heavy for the bar. They follow the grid setting.
 
-Two things follow that are worth knowing before they surprise you.
+Select a line to read its length in cells and what that comes to in beats.
 
-- **A Split fans out at one instant, but its branches land by their own
-  lengths.** Draw two branches level and they stay together; draw one a row
-  down and it flams. Logic needs its two feeds the same length, or the pulses
-  it is meant to catch together never coincide.
-- **A Param in Node scope writes when the pulse passes it, and its target
-  reads when its own pulse arrives.** The line between them now separates
-  those two moments, so a Param wants to sit close to what it modulates. Signal
-  scope rides with the pulse and is not affected.
-
-Select a line to see what it costs: the inspector gives its length in cells and
-in beats.
+| Node | What distance does to it |
+| --- | --- |
+| Split | Fans out on one instant; each branch lands by its own length. Level branches arrive together, a row apart flams. |
+| Logic | Its feeds must be drawn the same length, or the pulses it catches never coincide. |
+| Param, Node scope | Writes when the pulse passes it; the target reads when its own pulse arrives. Place it near its target, or use Signal scope, which rides with the pulse. |
 
 ## nodes
 
@@ -195,27 +189,23 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
 ## patches
 
-A patch is one JSON file. Name it in the left rail, press **Save**, and the
-file is named after it — `bus-stop-drones.json`. That file is the whole
-instrument: nodes, lines, tempo, grid, key. Send it to someone and they have
-what you had.
+A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
+rail; **Save** names the file after it.
 
 | To open one | How |
 | --- | --- |
 | A file | Drop it anywhere on the canvas, or press **Open** |
-| Text someone sent you | Paste it onto the canvas |
+| Its text | Paste it onto the canvas |
 
-Opening replaces what is on the canvas and goes on the undo stack, so a patch
-dropped on top of an afternoon's work costs one ⌘Z to put back.
+Opening replaces the canvas and goes on the undo stack. ⌘Z puts back what was
+there.
 
-Files are stamped `"app": "gridi"`, and anything that is not a patch is
-declined rather than opened — dropping a photo on the canvas does nothing.
-Patches saved before the stamp existed are recognised by their shape and still
-open.
+Files are stamped `"app": "gridi"`. Anything that is not a patch is declined,
+not opened. Files saved before the stamp are recognised by their shape and
+still open.
 
 Device bindings are not in the file. A patch names output slots A–D; each
-machine binds its own devices and remembers them, so a shared patch arrives
-pointing at slots rather than at hardware that is not there.
+machine binds its own devices.
 
 ## MIDI
 
