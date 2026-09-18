@@ -4,6 +4,7 @@ import {
   createPatch, createNode, createLine, createChannel, addNode, connect, canConnect,
   removeNode, removeLine, serialize, deserialize, demoPatch, outgoing, incoming,
   channelSummary,
+  readPatch, looksLikePatch, APP_ID,
 } from '../src/model.js';
 import { lineCells } from '../src/geometry.js';
 
@@ -148,8 +149,8 @@ test('the demo patch is a working instrument', () => {
 
 /* ------------------------------------------------------- the patch grid */
 
-test('a new patch measures its cells in eighth notes', () => {
-  assert.equal(createPatch('x').grid, '1/8');
+test('a new patch measures its cells in sixteenth notes', () => {
+  assert.equal(createPatch('x').grid, '1/16');
 });
 
 test('the grid survives a save and an open', () => {
@@ -160,10 +161,64 @@ test('the grid survives a save and an open', () => {
 
 test('a patch from before the grid existed opens on the default', () => {
   const older = { name: 'old', bpm: 120, nodes: [], lines: [] };
-  assert.equal(deserialize(JSON.stringify(older)).grid, '1/8');
+  assert.equal(deserialize(JSON.stringify(older)).grid, '1/16');
 });
 
 test('a grid value that is not on offer is refused, not trusted', () => {
   const bogus = { name: 'b', grid: '1/5', nodes: [], lines: [] };
-  assert.equal(deserialize(JSON.stringify(bogus)).grid, '1/8');
+  assert.equal(deserialize(JSON.stringify(bogus)).grid, '1/16');
+});
+
+/* ------------------------------------------------- patches as shared files */
+
+test('every saved patch is stamped, so a drop can be told apart from any JSON', () => {
+  const raw = JSON.parse(serialize(createPatch('stamped')));
+  assert.equal(raw.app, APP_ID);
+  assert.equal(raw.name, 'stamped');
+});
+
+test('a saved patch reads back as the same patch', () => {
+  const p = demoPatch();
+  const back = readPatch(serialize(p));
+  assert.equal(back.nodes.length, p.nodes.length);
+  assert.equal(back.lines.length, p.lines.length);
+  assert.equal(back.name, p.name);
+  assert.equal(back.grid, p.grid);
+});
+
+test('anything that is not a patch is declined rather than opened', () => {
+  for (const text of [
+    '',
+    'hello',
+    '<svg></svg>',
+    '[]',
+    '{}',
+    '{"nodes":[],"lines":[]}',
+    '{"nodes":[{"type":"not a node type"}],"lines":[]}',
+    '{"app":"something-else","nodes":[{"type":"pulse"}]}',
+  ]) {
+    assert.equal(readPatch(text), null, `${text} should not open`);
+  }
+});
+
+test('a patch saved before the stamp existed is recognised by its shape', () => {
+  const raw = JSON.parse(serialize(demoPatch()));
+  delete raw.app;
+  const back = readPatch(JSON.stringify(raw));
+  assert.ok(back, 'an older file still opens');
+  assert.equal(back.nodes.length, raw.nodes.length);
+});
+
+test('a stamped file is trusted even when it holds nothing yet', () => {
+  assert.ok(looksLikePatch({ app: APP_ID, nodes: [], lines: [] }), 'an empty patch is a patch');
+  assert.ok(readPatch(serialize(createPatch('empty'))), 'and opens');
+});
+
+test('a patch too big to hold is truncated on the way in, not refused', () => {
+  const p = createPatch('huge');
+  for (let i = 0; i < 20; i += 1) addNode(p, createNode('note', i * 10, 0));
+  const limits = [];
+  const back = readPatch(serialize(p), (kind, asked, kept) => limits.push({ kind, asked, kept }));
+  assert.equal(back.nodes.length, 20, 'well inside the ceiling');
+  assert.deepEqual(limits, []);
 });

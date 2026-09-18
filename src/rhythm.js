@@ -34,7 +34,7 @@ export const divisionBeats = (key) => (DIVISIONS[key] ?? DIVISIONS['1/16']).beat
  */
 export const GRID_KEYS = ['1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/4T', '1/8T', '1/16T'];
 
-export const DEFAULT_GRID = '1/8';
+export const DEFAULT_GRID = '1/16';
 
 /** Beats one grid cell is worth. This is what makes distance into time. */
 export const gridBeats = (key) => divisionBeats(GRID_KEYS.includes(key) ? key : DEFAULT_GRID);

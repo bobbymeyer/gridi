@@ -30,7 +30,7 @@ Moving a node retimes the patch.
 
 | Setting | Effect |
 | --- | --- |
-| Grid | What one cell is worth: 1/1 to 1/32, plus 1/4T, 1/8T, 1/16T. Default 1/8. |
+| Grid | What one cell is worth: 1/1 to 1/32, plus 1/4T, 1/8T, 1/16T. Default 1/16. |
 
 The field is ruled in three weights to match: light for the cell, medium for
 the beat, heavy for the bar. Refine the grid and the rules close up.
@@ -193,6 +193,30 @@ Mixolydian, Locrian, Maj Pent, Min Pent, Blues, Whole Tone, Chromatic.
 Degree overflow: `Extend` carries past the end of the scale into the next
 octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
+## patches
+
+A patch is one JSON file. Name it in the left rail, press **Save**, and the
+file is named after it — `bus-stop-drones.json`. That file is the whole
+instrument: nodes, lines, tempo, grid, key. Send it to someone and they have
+what you had.
+
+| To open one | How |
+| --- | --- |
+| A file | Drop it anywhere on the canvas, or press **Open** |
+| Text someone sent you | Paste it onto the canvas |
+
+Opening replaces what is on the canvas and goes on the undo stack, so a patch
+dropped on top of an afternoon's work costs one ⌘Z to put back.
+
+Files are stamped `"app": "gridi"`, and anything that is not a patch is
+declined rather than opened — dropping a photo on the canvas does nothing.
+Patches saved before the stamp existed are recognised by their shape and still
+open.
+
+Device bindings are not in the file. A patch names output slots A–D; each
+machine binds its own devices and remembers them, so a shared patch arrives
+pointing at slots rather than at hardware that is not there.
+
 ## MIDI
 
 | Control | Where | Does |
@@ -230,6 +254,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Zoom | Wheel |
 | Fit to patch | F |
 | Set what a cell is worth | Grid, in the header |
+| Open a patch | Drop the file on the canvas, or paste its text |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -291,6 +316,13 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 4. Use the **Grid** setting to scale the whole patch at once — 1/16 halves every
    travel time, 1/4 doubles it.
 
+### share a patch
+
+1. Give it a name in the left rail.
+2. **Save**. The file lands in your downloads, named after the patch.
+3. Send the file, or its text.
+4. They drop it on their canvas, or paste it there.
+
 ### follow another sequencer
 
 1. Choose the master's port under **MIDI in**.
@@ -311,7 +343,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 235 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 241 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

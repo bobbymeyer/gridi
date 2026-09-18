@@ -14,6 +14,13 @@ import { asSlot, DEFAULT_SLOT } from './midi.js';
 
 export const PATCH_VERSION = 2;
 
+/**
+ * Stamped on every file Gridi writes, so a patch dropped on the canvas can be
+ * told apart from any other JSON that lands there. Files saved before the
+ * stamp existed are recognised by their shape instead, and still open.
+ */
+export const APP_ID = 'gridi';
+
 export function createNode(type, col, row, params = {}) {
   return {
     id: makeId('n'),
@@ -145,7 +152,46 @@ export function scaleSummary(patchOrLine) {
 /* ---------------------------------------------------------------- serialise */
 
 export function serialize(patch) {
-  return JSON.stringify(patch, null, 2);
+  return JSON.stringify({ app: APP_ID, ...patch }, null, 2);
+}
+
+/**
+ * Is this parsed JSON a Gridi patch?
+ *
+ * The stamp is the answer when it is there. Without it -- a file saved by an
+ * older build, or a patch someone pasted out of the middle of something -- the
+ * shape has to do: a list of nodes, each naming a type this build knows.
+ * Anything else is somebody's else's JSON and is left alone.
+ */
+export function looksLikePatch(raw) {
+  if (!raw || typeof raw !== 'object') return false;
+  if (raw.app === APP_ID) return true;
+  if (!Array.isArray(raw.nodes) || !Array.isArray(raw.lines)) return false;
+  return raw.nodes.length > 0 && raw.nodes.every((n) => n && NODE_TYPES[n.type]);
+}
+
+/**
+ * Read a patch out of dropped or pasted text.
+ *
+ * Returns null rather than throwing, because this runs against whatever the
+ * user happened to drag onto the canvas: not-JSON and not-a-patch are ordinary
+ * answers here, not errors to report as failures.
+ *
+ * @returns {object|null}
+ */
+export function readPatch(text, onLimit) {
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!looksLikePatch(raw)) return null;
+  try {
+    return deserialize(raw, onLimit);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -277,9 +323,9 @@ export function demoPatch() {
   p.bpm = 104;
   p.root = 9; // A
   p.scale = 'minPent';
-  // Laid out generously, so the cells are worth a thirty-second each: the walk
-  // from the clock to a note comes to about a bar. On the default eighth-note
-  // grid the same drawing would take eleven beats to reach the bass.
+  // Drawn wide, so its cells are worth a thirty-second rather than the default
+  // sixteenth: the walk from the clock to a note comes to about a bar. The
+  // grid is a patch setting, and this is a patch that wants a finer one.
   p.grid = '1/32';
 
   const clock = addNode(p, createNode('pulse', 3, 14, {

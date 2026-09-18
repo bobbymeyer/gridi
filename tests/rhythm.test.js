@@ -58,11 +58,11 @@ test('euclid gating is off unless enabled', () => {
 
 /* ------------------------------------------------------------- the grid */
 
-test('a cell is worth an eighth note until told otherwise', () => {
-  assert.equal(DEFAULT_GRID, '1/8');
-  assert.equal(gridBeats(DEFAULT_GRID), 0.5);
-  assert.equal(gridBeats(undefined), 0.5, 'and nonsense falls back to it');
-  assert.equal(gridBeats('1/3'), 0.5, 'as does a value that is not on offer');
+test('a cell is worth a sixteenth note until told otherwise', () => {
+  assert.equal(DEFAULT_GRID, '1/16');
+  assert.equal(gridBeats(DEFAULT_GRID), 0.25);
+  assert.equal(gridBeats(undefined), 0.25, 'and nonsense falls back to it');
+  assert.equal(gridBeats('1/3'), 0.25, 'as does a value that is not on offer');
 });
 
 test('refining the grid makes each cell worth less', () => {

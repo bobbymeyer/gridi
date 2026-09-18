@@ -58,9 +58,9 @@ function basicPatch(pulseParams = {}, noteParams = {}) {
 
 test('a clock drives a note node at the right rate', () => {
   const { p, clock, note } = basicPatch();
-  // Four cells of line between the two, an eighth note each: a beat of travel.
+  // Four cells of line between the two, a sixteenth note each: one beat.
   const lat = walk(p, clock, note);
-  assert.ok(Math.abs(lat - 1) < 1e-9, `four cells at 1/8 is a bar, got ${lat}s`);
+  assert.ok(Math.abs(lat - 0.5) < 1e-9, `four cells at 1/16 is a beat, got ${lat}s`);
   const { notes } = run(p, 2 + lat);
   // 120bpm, 1/4 notes -> every 0.5s, starting at the 0.08s anchor.
   assert.ok(notes.length >= 4, `got ${notes.length}`);
@@ -401,8 +401,16 @@ test('a param node steps a target parameter', () => {
   // runs at a phase set by the distance, so a Param wants to sit next to what
   // it modulates. The opening notes are the pulses already in flight.
   const { notes } = run(p, 7 + walk(p, clock, mod, note));
-  const settled = notes.filter((n) => n.at > 4).slice(0, 6);
-  assert.deepEqual(settled.map((n) => n.note), [60, 64, 67, 60, 64, 67]);
+  const cycle = [60, 64, 67];
+  const settled = notes.filter((n) => n.at > 4).slice(0, 6).map((n) => n.note);
+  assert.equal(settled.length, 6, 'enough notes to see the cycle');
+  const from = cycle.indexOf(settled[0]);
+  assert.ok(from >= 0, `${settled[0]} is not one of the three`);
+  assert.deepEqual(
+    settled,
+    settled.map((_, i) => cycle[(from + i) % cycle.length]),
+    'the three degrees come round in order, at whatever phase the distance sets',
+  );
 });
 
 test('a signal-scope param node rides with the pulse', () => {
@@ -492,14 +500,14 @@ test('moving a node retimes the patch', () => {
 
 test('the grid decides what a cell of line costs', () => {
   const { p, clock, note } = basicPatch();
-  const eighths = run(p, 2 + walk(p, clock, note)).notes[0].at;
+  const asDrawn = run(p, 2 + walk(p, clock, note)).notes[0].at;
 
-  p.grid = '1/16';
-  const sixteenths = run(p, 2 + walk(p, clock, note)).notes[0].at;
+  p.grid = '1/32';
+  const thirtyseconds = run(p, 2 + walk(p, clock, note)).notes[0].at;
 
   // Half the note value, half the travel. The 0.08s anchor is not travel, so
   // it is taken off both sides before they are compared.
-  assert.ok(Math.abs((eighths - 0.08) / 2 - (sixteenths - 0.08)) < 1e-6);
+  assert.ok(Math.abs((asDrawn - 0.08) / 2 - (thirtyseconds - 0.08)) < 1e-6);
 });
 
 test('a line with no length costs no time', () => {
