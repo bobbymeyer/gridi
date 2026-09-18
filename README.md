@@ -42,6 +42,7 @@ Select a line to read its length in cells and what that comes to in beats.
 | Split | Fans out on one instant; each branch lands by its own length. Level branches arrive together, a row apart flams. |
 | Logic | Its feeds must be drawn the same length, or the pulses it catches never coincide. |
 | Param, Node scope | Writes when the pulse passes it; the target reads when its own pulse arrives. Place it near its target, or use Signal scope, which rides with the pulse. |
+| Key, latched | Writes the project key. Notes read it when they sound, so a chord change lands on the bar however far the pulses have to travel. |
 
 ## nodes
 
@@ -187,6 +188,19 @@ Mixolydian, Locrian, Maj Pent, Min Pent, Blues, Whole Tone, Chromatic.
 Degree overflow: `Extend` carries past the end of the scale into the next
 octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
+## library
+
+**Library** in the left rail lists the patches that ship with Gridi. Picking one
+opens it like any other patch, undo included.
+
+| Patch | What it is |
+| --- | --- |
+| Bossa Nova | ii-V-I in C at 132. Comp, bass, melody and a latched key, each on its own clock. The clave is five lines of different lengths out of one Split. |
+
+They live in `patches/`, listed in `patches/index.json`. Add one by saving a
+patch into that folder and adding a line to the index. `tools/` holds the
+scripts that built them, where an entry needed arithmetic rather than drawing.
+
 ## patches
 
 A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
@@ -245,6 +259,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Fit to patch | F |
 | Set what a cell is worth | Grid, in the header |
 | Open a patch | Drop the file on the canvas, or paste its text |
+| Open a patch that ships with Gridi | Library, in the left rail |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -333,7 +348,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 241 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 247 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

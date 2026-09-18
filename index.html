@@ -95,6 +95,7 @@
         <input class="field rail__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
         <div class="rail__buttons">
           <button class="btn" id="new">new</button>
+          <button class="btn" id="library">library</button>
           <button class="btn" id="demo">demo</button>
           <button class="btn" id="export">save</button>
           <button class="btn" id="import">open</button>
@@ -106,6 +107,14 @@
     <section class="stage">
       <canvas id="canvas"></canvas>
       <div class="stage__placing" id="placing" hidden></div>
+      <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <div class="sheet__head">
+          <b id="sheet-title">library</b>
+          <button class="sheet__close" id="sheet-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="sheet__body" id="sheet-list"></div>
+      </div>
+
       <div class="stage__drop" id="drop" hidden>
         <b>drop to open</b>
         <span>a patch saved from Gridi</span>

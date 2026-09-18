@@ -490,6 +490,63 @@ input[type="checkbox"]:checked::after {
 
 .stage__drop[hidden] { display: none; }
 
+/* The library. A short list, so it is a panel in the corner of the stage
+   rather than anything that takes the screen over. */
+.sheet {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  z-index: 4;
+  width: min(360px, calc(100% - 28px));
+  background: var(--paper);
+  border: var(--rule-w) solid var(--rule);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: var(--rule-w) solid var(--rule);
+  font: var(--micro);
+  letter-spacing: var(--track);
+}
+
+.sheet__close {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sheet__body { max-height: 320px; overflow-y: auto; }
+
+.sheet__item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--grid-module);
+  background: none;
+  color: var(--ink);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet__item:last-child { border-bottom: 0; }
+.sheet__item:hover, .sheet__item:focus-visible { background: var(--yellow); }
+.sheet__item b { display: block; font-size: 15px; font-weight: 700; }
+.sheet__item span { display: block; margin-top: 3px; font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
+.sheet__item:hover span, .sheet__item:focus-visible span { color: var(--ink); }
+
+.sheet__note { padding: 10px 12px; font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
+
+.sheet[hidden] { display: none; }
+
 /* Inspector ---------------------------------------------------------------- */
 
 .pane {

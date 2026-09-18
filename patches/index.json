@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "file": "bossa-nova.json",
+      "name": "Bossa Nova",
+      "note": "ii-V-I in C. The clave is drawn as distance, one cell a sixteenth."
+    }
+  ]
+}
