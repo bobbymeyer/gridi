@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { readPatch, outgoing, nodeById } from '../src/model.js';
 import { lineCells } from '../src/geometry.js';
 import { gridBeats } from '../src/rhythm.js';
+import { LIBRARY } from '../tools/build.mjs';
 
 const read = (file) => readFileSync(new URL(`../patches/${file}`, import.meta.url), 'utf8');
 const index = JSON.parse(read('index.json'));
@@ -104,4 +105,132 @@ test('the bossa parts are in phase with each other', () => {
   // The key change is pulled a sixteenth ahead of the comp, so the chord is
   // already in place when the bar's first chord tone fires.
   assert.ok(Math.abs(comp - key - 0.25) < 1e-9, `the key lands ${comp - key} beats early, wanted 0.25`);
+});
+
+/* ------------------------------------------------- the files match the tools */
+
+/**
+ * A patch with its ids taken out.
+ *
+ * Node ids are minted fresh on every build, so two runs of the same builder are
+ * never the same bytes. Everything that decides what a patch sounds like is
+ * here: the settings, the nodes in order, and the lines as the pair of node
+ * positions they join.
+ */
+function shape(patch) {
+  const at = new Map(patch.nodes.map((n, i) => [n.id, i]));
+  return JSON.stringify({
+    name: patch.name,
+    bpm: patch.bpm,
+    grid: patch.grid,
+    root: patch.root,
+    scale: patch.scale,
+    nodes: patch.nodes.map((n) => ({ type: n.type, col: n.col, row: n.row, params: n.params })),
+    lines: patch.lines.map((l) => ({
+      from: at.get(l.from),
+      to: at.get(l.to),
+      channelMode: l.channelMode,
+      channels: l.channels,
+      scaleMode: l.scaleMode,
+      scale: l.scale,
+      root: l.root,
+      delay: l.delay,
+    })),
+  }, null, 2);
+}
+
+test('every file in the library is what its builder produces', () => {
+  assert.equal(LIBRARY.length, index.patches.length, 'the index lists every builder');
+  for (const entry of LIBRARY) {
+    const onDisk = readPatch(read(entry.file));
+    assert.ok(onDisk, `${entry.file} opens`);
+    assert.equal(
+      shape(onDisk),
+      shape(entry.build()),
+      `${entry.file} is out of date -- run node tools/build.mjs`,
+    );
+  }
+});
+
+/* --------------------------------------------------------- what each one is */
+
+/** Cells from an emitter to the first thing it feeds. */
+function chain(patch, node) {
+  let total = 0;
+  let here = node;
+  for (let hop = 0; hop < 8; hop += 1) {
+    const next = outgoing(patch, here.id)[0];
+    if (!next) break;
+    const to = nodeById(patch, next.to);
+    total += lineCells(here, to);
+    here = to;
+  }
+  return total;
+}
+
+/** The emitter whose chain ends on a node the test can recognise. */
+function clockFor(patch, matches) {
+  return patch.nodes.filter((n) => n.type === 'pulse').find((n) => {
+    let here = n;
+    for (let hop = 0; hop < 8; hop += 1) {
+      const next = outgoing(patch, here.id)[0];
+      if (!next) return false;
+      here = nodeById(patch, next.to);
+      if (matches(here)) return true;
+    }
+    return false;
+  });
+}
+
+/** Offsets of a Split's branches from its shortest one, in cells. */
+function figure(patch, split) {
+  const cells = outgoing(patch, split.id)
+    .map((l) => lineCells(split, nodeById(patch, l.to)))
+    .sort((a, b) => a - b);
+  return cells.map((c) => c - cells[0]);
+}
+
+test('the samba tamborim is the figure it says it is', () => {
+  const patch = readPatch(read('samba.json'));
+  const split = patch.nodes.find((n) => n.type === 'split');
+  assert.deepEqual(figure(patch, split), [0, 3, 6, 10, 12, 14]);
+});
+
+test('the samba surdo falls a beat later than the bar, on two and four', () => {
+  const patch = readPatch(read('samba.json'));
+  const isDrum = (note) => (n) => n.type === 'note' && n.params.degree === (note % 12) + 1;
+  const surdo = clockFor(patch, isDrum(41));
+  const tamborim = patch.nodes.find((n) => n.type === 'split');
+  const tamClock = clockFor(patch, (n) => n.id === tamborim.id);
+  // The surdo repeats every two bars, the tamborim every one. A beat between
+  // them, however many whole cycles each has had to wait to be drawable.
+  const gap = ((chain(patch, surdo) - chain(patch, tamClock)) % 16 + 16) % 16;
+  assert.equal(gap, 4, 'a beat, which is what puts the surdo on two and four');
+});
+
+test('the house open hat is the kick clock, an eighth further out', () => {
+  const patch = readPatch(read('house.json'));
+  const isDrum = (note) => (n) => n.type === 'note' && n.params.degree === (note % 12) + 1;
+  const kick = chain(patch, clockFor(patch, isDrum(36)));
+  const hat = chain(patch, clockFor(patch, isDrum(46)));
+  assert.equal(((hat - kick) % 4 + 4) % 4, 2, 'two cells of a four-cell beat');
+});
+
+test('the hip-hop kick is three hits off one clock', () => {
+  const patch = readPatch(read('hiphop.json'));
+  const split = patch.nodes.find((n) => n.type === 'split');
+  assert.deepEqual(figure(patch, split), [0, 7, 10]);
+});
+
+test('the ambient loops share no factors, so the piece does not come round', () => {
+  const patch = readPatch(read('ambient.json'));
+  const lengths = patch.nodes
+    .filter((n) => n.type === 'pulse')
+    .map((n) => Math.round(n.params.ratioDen / n.params.ratioNum))
+    .sort((a, b) => a - b);
+  assert.deepEqual(lengths, [5, 7, 11, 13, 16]);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const lcm = lengths.reduce((a, b) => (a * b) / gcd(a, b));
+  assert.equal(lcm, 80080, 'beats before the five of them line up again');
+  assert.ok(lcm / patch.bpm / 60 > 20, `only ${(lcm / patch.bpm / 60).toFixed(1)} hours`);
 });

@@ -193,13 +193,33 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 **Library** in the left rail lists the patches that ship with Gridi. Picking one
 opens it like any other patch, undo included.
 
-| Patch | What it is |
-| --- | --- |
-| Bossa Nova | ii-V-I in C at 132. Comp, bass, melody and a latched key, each on its own clock. The clave is five lines of different lengths out of one Split. |
+| Patch | BPM | What it is |
+| --- | --- | --- |
+| Bossa Nova | 132 | Comp, bass, melody and a latched key on ii-V-I. The clave is five lines of different lengths out of one Split. |
+| Samba | 96 | Caixa, surdo, tamborim, agogô and a bass. The surdo's line runs a beat further than the rest, which is what puts it on two and four. |
+| House | 124 | Four to the floor, offbeat bass and a stab. The open hat shares the kick's clock and is drawn an eighth longer. |
+| Hip-Hop | 88 | Boom-bap kit with swung hats. One clock a bar, three kicks at their own distances. |
+| Ambient | 60 | Five loops of 5, 7, 11, 13 and 16 beats, after the tape loops on *Music for Airports*. They come back into line once every 22 hours. |
 
-They live in `patches/`, listed in `patches/index.json`. Add one by saving a
-patch into that folder and adding a line to the index. `tools/` holds the
-scripts that built them, where an entry needed arithmetic rather than drawing.
+The figures the percussion patches use, in sixteenths from the downbeat:
+
+| Figure | Hits |
+| --- | --- |
+| Bossa clave, 3-2 | 0, 6, 12, 20, 28, over two bars |
+| Samba tamborim | 0, 3, 6, 10, 12, 14 |
+| Hip-hop kick | 0, 7, 10 |
+
+Drum voices are pinned with a chromatic line rooted at C, so a Note node's
+degree is a General MIDI note number and the key never moves them.
+
+Patches live in `patches/`, listed in `patches/index.json`. Add one by saving a
+patch into that folder and adding a line to the index. The ones that ship were
+built by the scripts in `tools/`, because an offset is a distance and solving
+several of them is arithmetic:
+
+```sh
+node tools/build.mjs
+```
 
 ## patches
 
@@ -348,7 +368,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 247 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 253 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

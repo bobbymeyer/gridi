@@ -55,3 +55,60 @@ export function chord(ch, transposes) {
     channels: transposes.map((t) => ({ ...createChannel(ch, 'A'), transpose: t })),
   };
 }
+
+/**
+ * A row of branches off one node, each arriving at its own offset.
+ *
+ * The offsets are what you want to hear -- a rhythm, in cells from the first
+ * hit. The rest is what the drawing costs: a branch that drops rows has to
+ * spend cells on the drop before it can spend any on being late, so the whole
+ * figure is pushed out until the steepest branch fits. `base` is how far it
+ * had to move, which is what another part has to match to stay in phase.
+ *
+ * @returns {{nodes: object[], base: number, span: number}}
+ */
+export function fan(patch, source, offsets, build, { rowStep = 4 } = {}) {
+  const sorted = [...offsets].sort((a, b) => a - b);
+  let base = 1;
+  for (let i = 0; i < sorted.length; i += 1) {
+    const need = i * rowStep + 4 - (sorted[i] - sorted[0]);
+    if (need > base) base = need;
+  }
+  const nodes = sorted.map((offset, i) => downstream(patch, source, {
+    ...build(offset, i),
+    cells: base + offset - sorted[0],
+    rowDelta: i * rowStep,
+  }).node);
+  return { nodes, base, span: base + sorted[sorted.length - 1] - sorted[0] };
+}
+
+/**
+ * The shortest chain length that puts a voice where it belongs in the bar.
+ *
+ * A voice repeats every `period` cells, so being late by a whole number of
+ * periods costs nothing but a later entry on the first pass. `launch` is the
+ * offset every part in the patch shares, `offset` is where this voice sits
+ * against the bar, and `min` is how short the drawing will allow.
+ */
+export function phase(launch, offset, period, min = 1) {
+  let cells = ((launch + offset) % period + period) % period;
+  while (cells < min) cells += period;
+  return cells;
+}
+
+/** GM drum note -> the degree and octave that name it on a chromatic line. */
+export function drum(note) {
+  return { degree: (note % 12) + 1, octave: Math.floor(note / 12) - 1 };
+}
+
+/** A line pinned to the drum channel and to real note numbers, whatever the key does. */
+export function drumLine(ch = 10) {
+  return { ...channel(ch), scaleMode: 'set', scale: 'chromatic', root: 0 };
+}
+
+/** GM percussion, by the name this library calls it. */
+export const KIT = {
+  kick: 36, rim: 37, snare: 38, clap: 39, lowTom: 41, closedHat: 42,
+  pedalHat: 44, openHat: 46, crash: 49, ride: 51, tambourine: 54,
+  cowbell: 56, highAgogo: 67, lowAgogo: 68, shaker: 82,
+};
