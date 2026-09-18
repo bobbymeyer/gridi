@@ -4,6 +4,26 @@
       "file": "bossa-nova.json",
       "name": "Bossa Nova",
       "note": "ii-V-I in C. The clave is drawn as distance, one cell a sixteenth."
+    },
+    {
+      "file": "samba.json",
+      "name": "Samba",
+      "note": "Caixa, surdo, tamborim and agogô. The surdo is a beat further out, which puts it on two and four."
+    },
+    {
+      "file": "house.json",
+      "name": "House",
+      "note": "Four to the floor at 124. The open hat is the kick’s clock, drawn an eighth longer."
+    },
+    {
+      "file": "hiphop.json",
+      "name": "Hip-Hop",
+      "note": "Boom-bap at 88, hats swung. One clock a bar, three kicks at their own distances."
+    },
+    {
+      "file": "ambient.json",
+      "name": "Ambient",
+      "note": "Five loops of 5, 7, 11, 13 and 16 beats. They come back into line once a day."
     }
   ]
 }

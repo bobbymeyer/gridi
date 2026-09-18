@@ -11,7 +11,7 @@
 // LAUNCH is the offset they all agree on; the rest is the smallest multiple of
 // a part's cycle that leaves room to draw it.
 
-import { createPatch, createNode, addNode, serialize } from '../src/model.js';
+import { createPatch, createNode, addNode } from '../src/model.js';
 import { downstream, channel } from './lib.mjs';
 
 const BAR = 16; // cells, at a sixteenth a cell
@@ -122,8 +122,4 @@ export function bossaPatch() {
   });
 
   return p;
-}
-
-if (process.argv[1]?.endsWith('bossa.mjs')) {
-  process.stdout.write(serialize(bossaPatch()));
 }

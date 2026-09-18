@@ -1,20 +1,20 @@
 {
   "app": "gridi",
   "version": 2,
-  "name": "Bossa Nova",
-  "bpm": 132,
+  "name": "Hip-Hop",
+  "bpm": 88,
   "grid": "1/16",
   "clockOut": true,
   "sync": "internal",
-  "root": 0,
-  "scale": "major",
+  "root": 9,
+  "scale": "minPent",
   "seed": 1,
   "nodes": [
     {
-      "id": "n1nu",
+      "id": "n30kn",
       "type": "pulse",
       "col": 0,
-      "row": 40,
+      "row": 0,
       "label": "",
       "params": {
         "division": "1/1",
@@ -30,53 +30,14 @@
         "scale": "minPent",
         "root": 0,
         "channel": 1,
-        "velocity": 1,
+        "velocity": 116,
         "running": true
       }
     },
     {
-      "id": "n27t",
-      "type": "key",
-      "col": 13,
-      "row": 40,
-      "label": "",
-      "params": {
-        "mode": "cycle",
-        "root": 0,
-        "scale": "minPent",
-        "transpose": 0,
-        "steps": "2:dorian 7:mixolydian 0:major 0:major",
-        "latch": true
-      }
-    },
-    {
-      "id": "n4zh",
-      "type": "pulse",
-      "col": 0,
-      "row": 0,
-      "label": "",
-      "params": {
-        "division": "1/1",
-        "ratioNum": 1,
-        "ratioDen": 2,
-        "swing": 0,
-        "humanize": 0,
-        "euclidOn": false,
-        "euclidPulses": 3,
-        "euclidSteps": 8,
-        "euclidRotate": 0,
-        "scaleMode": "project",
-        "scale": "minPent",
-        "root": 0,
-        "channel": 1,
-        "velocity": 78,
-        "running": true
-      }
-    },
-    {
-      "id": "n52o",
+      "id": "n31zg",
       "type": "split",
-      "col": 10,
+      "col": 7,
       "row": 0,
       "label": "",
       "params": {
@@ -84,95 +45,61 @@
       }
     },
     {
-      "id": "n7hc",
+      "id": "n331s",
       "type": "note",
-      "col": 20,
+      "col": 17,
       "row": 0,
       "label": "",
       "params": {
         "degree": 1,
-        "octave": 4,
+        "octave": 2,
         "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.45,
+        "velocity": 118,
+        "length": 0.18,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "n9ge",
+      "id": "n350u",
       "type": "note",
-      "col": 21,
-      "row": 5,
+      "col": 20,
+      "row": 4,
       "label": "",
       "params": {
-        "degree": 7,
-        "octave": 4,
+        "degree": 1,
+        "octave": 2,
         "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.45,
+        "velocity": 96,
+        "length": 0.18,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "nb0m",
+      "id": "n37fk",
       "type": "note",
-      "col": 22,
-      "row": 10,
+      "col": 19,
+      "row": 8,
       "label": "",
       "params": {
-        "degree": 3,
-        "octave": 4,
+        "degree": 1,
+        "octave": 2,
         "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.45,
+        "velocity": 96,
+        "length": 0.18,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "nde9",
-      "type": "note",
-      "col": 25,
-      "row": 15,
-      "label": "",
-      "params": {
-        "degree": 5,
-        "octave": 4,
-        "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.45,
-        "midiOn": true,
-        "audition": true,
-        "ratchet": 1
-      }
-    },
-    {
-      "id": "nfjz",
-      "type": "note",
-      "col": 28,
-      "row": 20,
-      "label": "",
-      "params": {
-        "degree": 7,
-        "octave": 4,
-        "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.45,
-        "midiOn": true,
-        "audition": true,
-        "ratchet": 1
-      }
-    },
-    {
-      "id": "nhda",
+      "id": "n39fw",
       "type": "pulse",
       "col": 0,
-      "row": 28,
+      "row": 16,
       "label": "",
       "params": {
         "division": "1/2",
@@ -188,162 +115,313 @@
         "scale": "minPent",
         "root": 0,
         "channel": 1,
-        "velocity": 96,
+        "velocity": 110,
         "running": true
       }
     },
     {
-      "id": "niou",
-      "type": "router",
-      "col": 14,
-      "row": 28,
-      "label": "",
-      "params": {
-        "mode": "cycle"
-      }
-    },
-    {
-      "id": "nkx1",
+      "id": "n3ao0",
       "type": "note",
-      "col": 36,
-      "row": 28,
+      "col": 7,
+      "row": 16,
       "label": "",
       "params": {
-        "degree": 1,
+        "degree": 3,
         "octave": 2,
         "degreeMode": "extend",
         "velocity": 0,
-        "length": 0.9,
+        "length": 0.14,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "nmwh",
-      "type": "note",
-      "col": 31,
-      "row": 33,
-      "label": "",
-      "params": {
-        "degree": 5,
-        "octave": 2,
-        "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.9,
-        "midiOn": true,
-        "audition": true,
-        "ratchet": 1
-      }
-    },
-    {
-      "id": "nohu",
+      "id": "n3cb8",
       "type": "pulse",
       "col": 0,
-      "row": 56,
+      "row": 22,
       "label": "",
       "params": {
         "division": "1/8",
         "ratioNum": 1,
         "ratioDen": 1,
-        "swing": 0,
+        "swing": 0.22,
         "humanize": 0,
-        "euclidOn": true,
-        "euclidPulses": 5,
-        "euclidSteps": 16,
+        "euclidOn": false,
+        "euclidPulses": 3,
+        "euclidSteps": 8,
         "euclidRotate": 0,
         "scaleMode": "project",
         "scale": "minPent",
         "root": 0,
         "channel": 1,
-        "velocity": 70,
+        "velocity": 72,
         "running": true
       }
     },
     {
-      "id": "npr9",
-      "type": "chance",
-      "col": 14,
-      "row": 56,
+      "id": "n3dfn",
+      "type": "note",
+      "col": 7,
+      "row": 22,
       "label": "",
       "params": {
-        "probability": 62,
+        "degree": 7,
+        "octave": 2,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.05,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n3fwy",
+      "type": "pulse",
+      "col": 0,
+      "row": 28,
+      "label": "",
+      "params": {
+        "division": "1/16",
+        "ratioNum": 1,
+        "ratioDen": 1,
+        "swing": 0,
+        "humanize": 0,
+        "euclidOn": false,
+        "euclidPulses": 3,
+        "euclidSteps": 8,
+        "euclidRotate": 0,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 40,
+        "running": true
+      }
+    },
+    {
+      "id": "n3gzo",
+      "type": "chance",
+      "col": 7,
+      "row": 28,
+      "label": "",
+      "params": {
+        "probability": 22,
         "mode": "free"
       }
     },
     {
-      "id": "nrn2",
+      "id": "n3iqq",
+      "type": "note",
+      "col": 14,
+      "row": 28,
+      "label": "",
+      "params": {
+        "degree": 7,
+        "octave": 2,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.04,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n3kgu",
+      "type": "pulse",
+      "col": 0,
+      "row": 34,
+      "label": "",
+      "params": {
+        "division": "1/2",
+        "ratioNum": 1,
+        "ratioDen": 1,
+        "swing": 0,
+        "humanize": 0,
+        "euclidOn": false,
+        "euclidPulses": 3,
+        "euclidSteps": 8,
+        "euclidRotate": 0,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 104,
+        "running": true
+      }
+    },
+    {
+      "id": "n3lir",
       "type": "router",
-      "col": 28,
-      "row": 56,
+      "col": 11,
+      "row": 34,
       "label": "",
       "params": {
         "mode": "shuffle"
       }
     },
     {
-      "id": "ntov",
+      "id": "n3nc5",
       "type": "note",
-      "col": 58,
-      "row": 56,
+      "col": 33,
+      "row": 34,
+      "label": "",
+      "params": {
+        "degree": 1,
+        "octave": 2,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.7,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n3pwv",
+      "type": "note",
+      "col": 29,
+      "row": 38,
+      "label": "",
+      "params": {
+        "degree": 1,
+        "octave": 2,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.7,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n3rbz",
+      "type": "note",
+      "col": 25,
+      "row": 42,
+      "label": "",
+      "params": {
+        "degree": 4,
+        "octave": 2,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.7,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n3tli",
+      "type": "pulse",
+      "col": 0,
+      "row": 50,
+      "label": "",
+      "params": {
+        "division": "1/8",
+        "ratioNum": 1,
+        "ratioDen": 1,
+        "swing": 0.22,
+        "humanize": 0,
+        "euclidOn": true,
+        "euclidPulses": 3,
+        "euclidSteps": 8,
+        "euclidRotate": 0,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 66,
+        "running": true
+      }
+    },
+    {
+      "id": "n3us8",
+      "type": "chance",
+      "col": 8,
+      "row": 50,
+      "label": "",
+      "params": {
+        "probability": 55,
+        "mode": "free"
+      }
+    },
+    {
+      "id": "n3w96",
+      "type": "router",
+      "col": 17,
+      "row": 50,
+      "label": "",
+      "params": {
+        "mode": "shuffle"
+      }
+    },
+    {
+      "id": "n3ylo",
+      "type": "note",
+      "col": 39,
+      "row": 50,
       "label": "",
       "params": {
         "degree": 1,
         "octave": 5,
         "degreeMode": "extend",
         "velocity": 0,
-        "length": 0.35,
+        "length": 0.3,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "nvxe",
+      "id": "n40hr",
       "type": "note",
-      "col": 53,
-      "row": 61,
-      "label": "",
-      "params": {
-        "degree": 2,
-        "octave": 5,
-        "degreeMode": "extend",
-        "velocity": 0,
-        "length": 0.35,
-        "midiOn": true,
-        "audition": true,
-        "ratchet": 1
-      }
-    },
-    {
-      "id": "nx1s",
-      "type": "note",
-      "col": 48,
-      "row": 66,
+      "col": 35,
+      "row": 54,
       "label": "",
       "params": {
         "degree": 3,
         "octave": 5,
         "degreeMode": "extend",
         "velocity": 0,
-        "length": 0.35,
+        "length": 0.3,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
       }
     },
     {
-      "id": "nz0y",
+      "id": "n4271",
       "type": "note",
-      "col": 43,
-      "row": 71,
+      "col": 31,
+      "row": 58,
+      "label": "",
+      "params": {
+        "degree": 4,
+        "octave": 5,
+        "degreeMode": "extend",
+        "velocity": 0,
+        "length": 0.3,
+        "midiOn": true,
+        "audition": true,
+        "ratchet": 1
+      }
+    },
+    {
+      "id": "n44vg",
+      "type": "note",
+      "col": 27,
+      "row": 62,
       "label": "",
       "params": {
         "degree": 5,
         "octave": 5,
         "degreeMode": "extend",
         "velocity": 0,
-        "length": 0.35,
+        "length": 0.3,
         "midiOn": true,
         "audition": true,
         "ratchet": 1
@@ -352,9 +430,9 @@
   ],
   "lines": [
     {
-      "id": "l3nd",
-      "from": "n1nu",
-      "to": "n27t",
+      "id": "l3213",
+      "from": "n30kn",
+      "to": "n31zg",
       "channelMode": "inherit",
       "channels": [
         {
@@ -372,9 +450,109 @@
       "weight": 1
     },
     {
-      "id": "l6gf",
-      "from": "n4zh",
-      "to": "n52o",
+      "id": "l34f8",
+      "from": "n31zg",
+      "to": "n331s",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 10,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "set",
+      "scale": "chromatic",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l36g0",
+      "from": "n31zg",
+      "to": "n350u",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 10,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "set",
+      "scale": "chromatic",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l38xz",
+      "from": "n31zg",
+      "to": "n37fk",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 10,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "set",
+      "scale": "chromatic",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l3bst",
+      "from": "n39fw",
+      "to": "n3ao0",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 10,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "set",
+      "scale": "chromatic",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l3er2",
+      "from": "n3cb8",
+      "to": "n3dfn",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 10,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "set",
+      "scale": "chromatic",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l3hzh",
+      "from": "n3fwy",
+      "to": "n3gzo",
       "channelMode": "inherit",
       "channels": [
         {
@@ -392,109 +570,29 @@
       "weight": 1
     },
     {
-      "id": "l8ia",
-      "from": "n52o",
-      "to": "n7hc",
+      "id": "l3jms",
+      "from": "n3gzo",
+      "to": "n3iqq",
       "channelMode": "set",
       "channels": [
         {
           "out": "A",
-          "ch": 3,
+          "ch": 10,
           "transpose": 0,
           "velocity": null
         }
       ],
-      "scaleMode": "inherit",
-      "scale": "minPent",
+      "scaleMode": "set",
+      "scale": "chromatic",
       "root": 0,
       "delay": 0,
       "muted": false,
       "weight": 1
     },
     {
-      "id": "lalj",
-      "from": "n52o",
-      "to": "n9ge",
-      "channelMode": "set",
-      "channels": [
-        {
-          "out": "A",
-          "ch": 3,
-          "transpose": 0,
-          "velocity": null
-        }
-      ],
-      "scaleMode": "inherit",
-      "scale": "minPent",
-      "root": 0,
-      "delay": 0,
-      "muted": false,
-      "weight": 1
-    },
-    {
-      "id": "lcjb",
-      "from": "n52o",
-      "to": "nb0m",
-      "channelMode": "set",
-      "channels": [
-        {
-          "out": "A",
-          "ch": 3,
-          "transpose": 0,
-          "velocity": null
-        }
-      ],
-      "scaleMode": "inherit",
-      "scale": "minPent",
-      "root": 0,
-      "delay": 0,
-      "muted": false,
-      "weight": 1
-    },
-    {
-      "id": "le3s",
-      "from": "n52o",
-      "to": "nde9",
-      "channelMode": "set",
-      "channels": [
-        {
-          "out": "A",
-          "ch": 3,
-          "transpose": 0,
-          "velocity": null
-        }
-      ],
-      "scaleMode": "inherit",
-      "scale": "minPent",
-      "root": 0,
-      "delay": 0,
-      "muted": false,
-      "weight": 1
-    },
-    {
-      "id": "lgr5",
-      "from": "n52o",
-      "to": "nfjz",
-      "channelMode": "set",
-      "channels": [
-        {
-          "out": "A",
-          "ch": 3,
-          "transpose": 0,
-          "velocity": null
-        }
-      ],
-      "scaleMode": "inherit",
-      "scale": "minPent",
-      "root": 0,
-      "delay": 0,
-      "muted": false,
-      "weight": 1
-    },
-    {
-      "id": "lj87",
-      "from": "nhda",
-      "to": "niou",
+      "id": "l3mvq",
+      "from": "n3kgu",
+      "to": "n3lir",
       "channelMode": "inherit",
       "channels": [
         {
@@ -512,9 +610,9 @@
       "weight": 1
     },
     {
-      "id": "llvi",
-      "from": "niou",
-      "to": "nkx1",
+      "id": "l3o10",
+      "from": "n3lir",
+      "to": "n3nc5",
       "channelMode": "set",
       "channels": [
         {
@@ -532,9 +630,9 @@
       "weight": 1
     },
     {
-      "id": "lnj5",
-      "from": "niou",
-      "to": "nmwh",
+      "id": "l3qr2",
+      "from": "n3lir",
+      "to": "n3pwv",
       "channelMode": "set",
       "channels": [
         {
@@ -552,9 +650,29 @@
       "weight": 1
     },
     {
-      "id": "lqn8",
-      "from": "nohu",
-      "to": "npr9",
+      "id": "l3sik",
+      "from": "n3lir",
+      "to": "n3rbz",
+      "channelMode": "set",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 2,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "inherit",
+      "scale": "minPent",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l3vn8",
+      "from": "n3tli",
+      "to": "n3us8",
       "channelMode": "inherit",
       "channels": [
         {
@@ -572,9 +690,9 @@
       "weight": 1
     },
     {
-      "id": "lspi",
-      "from": "npr9",
-      "to": "nrn2",
+      "id": "l3x0m",
+      "from": "n3us8",
+      "to": "n3w96",
       "channelMode": "inherit",
       "channels": [
         {
@@ -592,9 +710,9 @@
       "weight": 1
     },
     {
-      "id": "luaq",
-      "from": "nrn2",
-      "to": "ntov",
+      "id": "l3zgl",
+      "from": "n3w96",
+      "to": "n3ylo",
       "channelMode": "set",
       "channels": [
         {
@@ -612,9 +730,9 @@
       "weight": 1
     },
     {
-      "id": "lwnf",
-      "from": "nrn2",
-      "to": "nvxe",
+      "id": "l41o0",
+      "from": "n3w96",
+      "to": "n40hr",
       "channelMode": "set",
       "channels": [
         {
@@ -632,9 +750,9 @@
       "weight": 1
     },
     {
-      "id": "lylr",
-      "from": "nrn2",
-      "to": "nx1s",
+      "id": "l43zc",
+      "from": "n3w96",
+      "to": "n4271",
       "channelMode": "set",
       "channels": [
         {
@@ -652,9 +770,9 @@
       "weight": 1
     },
     {
-      "id": "l10y5",
-      "from": "nrn2",
-      "to": "nz0y",
+      "id": "l45rm",
+      "from": "n3w96",
+      "to": "n44vg",
       "channelMode": "set",
       "channels": [
         {
