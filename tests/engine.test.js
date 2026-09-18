@@ -537,3 +537,73 @@ test('a line that goes nowhere costs nothing rather than throwing', () => {
   const engine = new Engine({ getPatch: () => p, audio: fakeAudio(), midi: fakeMidi() });
   assert.equal(engine.travelBeats(p, { id: 'x', from: 'nope', to: 'also nope' }), 0);
 });
+
+/* --------------------------------------------- a latched key, heard in time */
+
+test('a latched key is read when the note sounds, not when the pulse left', () => {
+  const p = createPatch('modulating');
+  p.bpm = 120;
+  p.grid = '1/16';
+  p.scale = 'major';
+  p.root = 0;
+
+  // The key turns twice a second. The note is three seconds of line from its
+  // clock, so its pulse is always in the air across several key changes.
+  const keyClock = addNode(p, createNode('pulse', 0, 20, { division: '1/2' }));
+  const key = addNode(p, createNode('key', 10, 20, {
+    mode: 'cycle',
+    steps: '0:major 7:major',
+    latch: true,
+  }));
+  connect(p, keyClock.id, key.id);
+
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/2' }));
+  const note = addNode(p, createNode('note', 31, 0, { degree: 1, octave: 4, audition: false }));
+  connect(p, clock.id, note.id);
+  const lag = walk(p, clock, note);
+  assert.ok(lag > 1, `the note wants to be several key changes away, is ${lag}s`);
+
+  const audio = fakeAudio();
+  const midi = fakeMidi();
+  const keys = [];
+  const engine = new Engine({
+    getPatch: () => p,
+    audio,
+    midi,
+    onFire: (f) => { if (f.kind === 'key') keys.push(f); },
+  });
+  engine.start();
+  for (let t = 0; t < 5 + lag; t += 0.01) {
+    audio.t = t;
+    engine.tick();
+  }
+
+  // Whatever key was last set before a note sounded is the key that note is in.
+  // Which pulse carried it, and how long ago that pulse left, does not come
+  // into it.
+  const notes = midi.notes.filter((n) => n.at > lag);
+  assert.ok(notes.length >= 4, `only ${notes.length} notes to look at`);
+  let checked = 0;
+  for (const hit of notes) {
+    const inForce = keys.filter((k) => k.time < hit.at - 1e-3).pop();
+    if (!inForce) continue; // nothing had been set yet
+    assert.equal(hit.note, inForce.root + 60, `at ${hit.at.toFixed(3)}s the key was ${inForce.root}`);
+    checked += 1;
+  }
+  assert.ok(checked >= 4, `only ${checked} notes had a key to check against`);
+  assert.ok(new Set(notes.map((n) => n.note)).size > 1, 'and the key really did move under them');
+});
+
+test('a key set on the line still beats the project, however late the pulse is', () => {
+  const { p, clock, note, line } = basicPatch();
+  p.scale = 'major';
+  p.root = 0;
+  note.params.degree = 1;
+  line.scaleMode = 'set';
+  line.scale = 'major';
+  line.root = 5; // F, whatever the project does afterwards
+
+  const { notes } = run(p, 2 + walk(p, clock, note));
+  assert.ok(notes.length > 0);
+  for (const hit of notes) assert.equal(hit.note, 65, 'F4, from the line');
+});

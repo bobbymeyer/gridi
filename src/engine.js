@@ -419,12 +419,26 @@ export class Engine {
     const fromProject = node.params.scaleMode !== 'set';
     return {
       channels: [{ out: DEFAULT_SLOT, ch: clamp(node.params.channel, 1, 16), transpose: 0, velocity: null }],
-      scale: fromProject ? patch.scale : node.params.scale,
-      root: fromProject ? patch.root : node.params.root,
+      // Left unset when the emitter follows the project, and read at the far
+      // end instead. A latched Key node writes the project key, and a pulse can
+      // now be bars in the air: the chord you hear has to be the one that is
+      // current when the note sounds, not the one that was current when the
+      // pulse left. A Key node or a line that sets a key writes real values
+      // here, and those still win all the way down.
+      scale: fromProject ? null : node.params.scale,
+      root: fromProject ? null : node.params.root,
       velocity: node.params.velocity,
       transpose: 0,
       degreeShift: 0,
       origin: node.id,
+    };
+  }
+
+  /** The key a pulse is in: what it carries, or the project's if it carries none. */
+  keyOf(patch, ctx) {
+    return {
+      scale: ctx.scale ?? patch.scale,
+      root: ctx.root ?? patch.root,
     };
   }
 
@@ -760,10 +774,11 @@ export class Engine {
 
   on_note(patch, node, evt) {
     const ctx = evt.ctx;
+    const key = this.keyOf(patch, ctx);
     const base = resolveDegree(
       node.params.degree + (ctx.degreeShift || 0),
-      ctx.scale,
-      ctx.root,
+      key.scale,
+      key.root,
       node.params.octave,
       node.params.degreeMode,
     );
@@ -802,12 +817,13 @@ export class Engine {
 
   on_synth(patch, node, evt) {
     const ctx = evt.ctx;
+    const key = this.keyOf(patch, ctx);
     const midiNote = clamp(
       Math.round(
         resolveDegree(
           node.params.degree + (ctx.degreeShift || 0),
-          ctx.scale,
-          ctx.root,
+          key.scale,
+          key.root,
           node.params.octave,
           node.params.degreeMode,
         ) + (ctx.transpose || 0),

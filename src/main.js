@@ -586,6 +586,11 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape') {
+    // The library is in front of everything, so it goes first.
+    if (!$('sheet').hidden) {
+      closeSheet();
+      return;
+    }
     state.ui.placing = null;
     state.ui.pendingFrom = null;
     state.ui.ghost = null;
@@ -708,6 +713,83 @@ async function openFromTransfer({ file, text }) {
   openPatch(patch, file?.name);
   return true;
 }
+
+/* --------------------------------------------------------------- library */
+
+/**
+ * The patches that ship with Gridi, listed in `patches/index.json`.
+ *
+ * They are ordinary patch files, opened by the same path as a dropped one --
+ * there is nothing a library patch can do that a saved one cannot. Fetched on
+ * first use and kept, because the list does not change while the page is open.
+ */
+let library = null;
+
+async function loadLibrary() {
+  if (library) return library;
+  const res = await fetch('patches/index.json');
+  if (!res.ok) throw new Error(`index ${res.status}`);
+  const raw = await res.json();
+  library = Array.isArray(raw.patches) ? raw.patches : [];
+  return library;
+}
+
+async function openLibraryPatch(entry) {
+  const res = await fetch(`patches/${entry.file}`);
+  if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
+  const patch = readPatch(await res.text(), onPatchLimit);
+  if (!patch) throw new Error(`${entry.file} is not a patch`);
+  closeSheet();
+  openPatch(patch, entry.name);
+}
+
+function closeSheet() {
+  $('sheet').hidden = true;
+}
+
+async function showLibrary() {
+  const list = $('sheet-list');
+  list.textContent = '';
+  $('sheet').hidden = false;
+  try {
+    const entries = await loadLibrary();
+    if (!entries.length) {
+      list.append(Object.assign(document.createElement('p'), {
+        className: 'sheet__note',
+        textContent: 'Nothing in the library yet.',
+      }));
+      return;
+    }
+    for (const entry of entries) {
+      const item = document.createElement('button');
+      item.className = 'sheet__item';
+      item.append(Object.assign(document.createElement('b'), { textContent: entry.name }));
+      if (entry.note) {
+        item.append(Object.assign(document.createElement('span'), { textContent: entry.note }));
+      }
+      item.addEventListener('click', () => {
+        openLibraryPatch(entry).catch(() => {
+          setStatus(`${entry.name} could not be opened.`, 'Sorry:');
+          closeSheet();
+        });
+      });
+      list.append(item);
+    }
+    list.firstChild?.focus();
+  } catch {
+    list.textContent = '';
+    list.append(Object.assign(document.createElement('p'), {
+      className: 'sheet__note',
+      textContent: 'The library could not be read. Gridi has to be served over http, not opened as a file.',
+    }));
+  }
+}
+
+$('library').addEventListener('click', () => {
+  if ($('sheet').hidden) showLibrary();
+  else closeSheet();
+});
+$('sheet-close').addEventListener('click', closeSheet);
 
 /*
  * Drag and drop. The counter is because dragenter and dragleave both fire for
