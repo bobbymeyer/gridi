@@ -10,6 +10,8 @@ import { SCALES, NOTE_NAMES } from './music.js';
 import { channelSummary, createChannel, nodeById } from './model.js';
 import { SLOTS, asSlot } from './midi.js';
 import { clamp } from './util.js';
+import { lineCells } from './geometry.js';
+import { gridBeats } from './rhythm.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -85,6 +87,11 @@ function makeRow(labelText) {
   const control = el('div', 'row__control');
   row.append(control);
   return { row, control };
+}
+
+/** 1.5 rather than 1.5000000000000002, and 2 rather than 2.0. */
+function trim(n) {
+  return String(Math.round(n * 1000) / 1000);
 }
 
 function optionsOf(spec) {
@@ -557,7 +564,26 @@ export class Inspector {
     /* Timing and state ---------------------------------------------------- */
     this.root.append(el('div', 'group', 'timing'));
 
-    const delayRow = makeRow('delay');
+    // What the line costs to walk, which is the first thing you want to know
+    // about it: two lines the same length carry pulses that stay together.
+    if (from && to) {
+      const cells = lineCells(from, to);
+      const beats = cells * gridBeats(patch.grid);
+      const travelRow = makeRow('travel');
+      travelRow.control.append(
+        el('span', 'row__value', `${cells} cell${cells === 1 ? '' : 's'}`),
+        el('span', 'row__value', `${trim(beats)} beat${beats === 1 ? '' : 's'}`),
+      );
+      this.root.append(travelRow.row);
+      const travelHint = el(
+        'p',
+        'row__hint',
+        `A cell is ${patch.grid}, so this line takes ${trim(beats)} beats to cross. Move either end to change it.`,
+      );
+      travelRow.row.append(travelHint);
+    }
+
+    const delayRow = makeRow('extra delay');
     const delay = el('input');
     delay.type = 'range';
     delay.min = '0';
@@ -572,7 +598,7 @@ export class Inspector {
     });
     delayRow.control.append(delay, delayOut);
     this.root.append(delayRow.row);
-    const delayHint = el('p', 'row__hint', 'In beats. Distance on the grid never affects timing.');
+    const delayHint = el('p', 'row__hint', 'Beats on top of the travel time, for anything the grid cannot say.');
     delayRow.row.append(delayHint);
 
     const muteRow = makeRow('mute');

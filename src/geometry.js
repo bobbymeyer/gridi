@@ -1,14 +1,15 @@
 // Grid maths, orthogonal line routing and hit testing.
 //
 // Lines are routed at right angles along the grid rather than as curves. The
-// grid is the instrument's organising idea, so the patch cabling obeys it too.
+// grid is the instrument's organising idea, so the patch cabling obeys it too
+// -- and since a cell is worth a note value, how far a line runs is how long
+// its pulses take. `lineCells` is the measurement the engine times against.
 
 import { clamp } from './util.js';
 
 export const CELL = 20; // world pixels per grid cell
 export const NODE_W = 6; // cells
 export const NODE_H = 3; // cells
-export const MODULE = 8; // cells between heavy grid rules
 
 export const nodeWidth = () => NODE_W * CELL;
 export const nodeHeight = () => NODE_H * CELL;
@@ -121,6 +122,17 @@ export function pointAlongPath(points, t) {
   }
   const last = points[points.length - 1];
   return { ...last, dx: 1, dy: 0 };
+}
+
+/**
+ * A line's length in whole grid cells, which is what it costs in musical time.
+ *
+ * Routes are snapped to the grid, so the raw length is already a multiple of a
+ * cell in every ordinary case; rounding keeps the half-cell a node's port sits
+ * at from ever leaking a fraction of a note value into the timing.
+ */
+export function lineCells(fromNode, toNode) {
+  return Math.round(pathLength(routeLine(fromNode, toNode)) / CELL);
 }
 
 /** Midpoint of a polyline, where a line's channel badge is drawn. */

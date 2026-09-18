@@ -7,12 +7,19 @@
 import { makeId, deepClone, clamp } from './util.js';
 import { defaultParams, typeMeta, NODE_TYPES } from './nodes.js';
 import { SCALES } from './music.js';
-import { DIVISIONS } from './rhythm.js';
+import { DIVISIONS, DEFAULT_GRID, GRID_KEYS } from './rhythm.js';
 import { isWaveform } from './voice.js';
 import { LIMITS } from './limits.js';
 import { asSlot, DEFAULT_SLOT } from './midi.js';
 
-export const PATCH_VERSION = 1;
+export const PATCH_VERSION = 2;
+
+/**
+ * Stamped on every file Gridi writes, so a patch dropped on the canvas can be
+ * told apart from any other JSON that lands there. Files saved before the
+ * stamp existed are recognised by their shape instead, and still open.
+ */
+export const APP_ID = 'gridi';
 
 export function createNode(type, col, row, params = {}) {
   return {
@@ -43,7 +50,7 @@ export function createLine(from, to, overrides = {}) {
     scaleMode: 'inherit', // 'inherit' | 'set'
     scale: 'minPent',
     root: 0,
-    delay: 0, // beats. Geometry never affects timing; this is the only delay.
+    delay: 0, // beats, on top of the time the line's length already costs
     muted: false,
     weight: 1, // routers pick weighted-random with this
     ...overrides,
@@ -55,6 +62,7 @@ export function createPatch(name = 'Untitled') {
     version: PATCH_VERSION,
     name,
     bpm: 112,
+    grid: DEFAULT_GRID, // note value one grid cell is worth
     clockOut: true,
     sync: 'internal',
     root: 0,
@@ -144,7 +152,46 @@ export function scaleSummary(patchOrLine) {
 /* ---------------------------------------------------------------- serialise */
 
 export function serialize(patch) {
-  return JSON.stringify(patch, null, 2);
+  return JSON.stringify({ app: APP_ID, ...patch }, null, 2);
+}
+
+/**
+ * Is this parsed JSON a Gridi patch?
+ *
+ * The stamp is the answer when it is there. Without it -- a file saved by an
+ * older build, or a patch someone pasted out of the middle of something -- the
+ * shape has to do: a list of nodes, each naming a type this build knows.
+ * Anything else is somebody's else's JSON and is left alone.
+ */
+export function looksLikePatch(raw) {
+  if (!raw || typeof raw !== 'object') return false;
+  if (raw.app === APP_ID) return true;
+  if (!Array.isArray(raw.nodes) || !Array.isArray(raw.lines)) return false;
+  return raw.nodes.length > 0 && raw.nodes.every((n) => n && NODE_TYPES[n.type]);
+}
+
+/**
+ * Read a patch out of dropped or pasted text.
+ *
+ * Returns null rather than throwing, because this runs against whatever the
+ * user happened to drag onto the canvas: not-JSON and not-a-patch are ordinary
+ * answers here, not errors to report as failures.
+ *
+ * @returns {object|null}
+ */
+export function readPatch(text, onLimit) {
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!looksLikePatch(raw)) return null;
+  try {
+    return deserialize(raw, onLimit);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -160,6 +207,10 @@ export function deserialize(text, onLimit) {
   const patch = createPatch(typeof raw.name === 'string' ? raw.name : 'Untitled');
 
   patch.bpm = clamp(Number(raw.bpm) || 112, 20, 300);
+  // Patches from before version 2 were authored when distance cost nothing.
+  // They load on the default grid and play slower than they were written; the
+  // shapes are intact, and the grid control is how you take the time back.
+  patch.grid = GRID_KEYS.includes(raw.grid) ? raw.grid : DEFAULT_GRID;
   patch.clockOut = raw.clockOut !== false;
   patch.sync = raw.sync === 'external' ? 'external' : 'internal';
   patch.root = clamp(Math.round(Number(raw.root) || 0), 0, 11);
@@ -272,6 +323,10 @@ export function demoPatch() {
   p.bpm = 104;
   p.root = 9; // A
   p.scale = 'minPent';
+  // Drawn wide, so its cells are worth a thirty-second rather than the default
+  // sixteenth: the walk from the clock to a note comes to about a bar. The
+  // grid is a patch setting, and this is a patch that wants a finer one.
+  p.grid = '1/32';
 
   const clock = addNode(p, createNode('pulse', 3, 14, {
     division: '1/16',
@@ -326,7 +381,8 @@ export function demoPatch() {
   connect(p, chance.id, router.id);
   connect(p, router.id, n1.id);
   connect(p, router.id, n2.id);
-  connect(p, router.id, n3.id, { delay: 0.25 });
+  // n3 sits a row further out than n2, which is all the flam this needs now.
+  connect(p, router.id, n3.id);
   connect(p, slow.id, key.id);
 
   return p;

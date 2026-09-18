@@ -197,15 +197,17 @@ test('a wave passes through a split to every branch', () => {
   const p = createPatch('fan');
   p.bpm = 120;
   const lfo = addNode(p, createNode('lfo', 0, 0, { resolution: 8 }));
-  const split = addNode(p, createNode('split', 6, 0));
+  const split = addNode(p, createNode('split', 10, 0));
   connect(p, lfo.id, split.id);
   for (const [i, cc] of [21, 22].entries()) {
-    const mod = addNode(p, createNode('param', 12, i * 4, { scope: 'midi', cc }));
+    const mod = addNode(p, createNode('param', 20, i * 8, { scope: 'midi', cc }));
     const line = connect(p, split.id, mod.id);
     line.channelMode = 'set';
     line.channels = [createChannel(1, 'A')];
   }
-  const { controls } = run(p, 1);
+  // Waves walk the grid at the same rate pulses do, so the window has to cover
+  // the longer of the two branches -- the second one is three rows down.
+  const { controls } = run(p, 6);
   assert.ok(controls.some((c) => c.cc === 21));
   assert.ok(controls.some((c) => c.cc === 22));
 });

@@ -290,6 +290,20 @@ test('internal sync ignores the incoming clock entirely', () => {
 
 /* -------------------------------------------------------- played notes */
 
+/**
+ * Tick on until everything in flight has landed.
+ *
+ * A played note enters at the Input node and then has to walk the line to
+ * whatever it feeds, which takes as long as that line is worth. One tick only
+ * ever covers the look-ahead, so these tests run the clock on a little.
+ */
+function settle(engine, audio, from, seconds = 3) {
+  for (let t = from; t < from + seconds; t += 0.02) {
+    audio.t = t;
+    engine.tick();
+  }
+}
+
 test('a played note sends a pulse from every Input node listening', () => {
   const p = createPatch('keys');
   p.bpm = 120;
@@ -302,7 +316,7 @@ test('a played note sends a pulse from every Input node listening', () => {
   engine.start();
   audio.t = 0.2;
   engine.externalNote({ channel: 1, note: 65, velocity: 90, at: 0.2 });
-  engine.tick();
+  settle(engine, audio, 0.2);
   assert.equal(midi.notes.length, 1);
   assert.equal(midi.notes[0].note, 65, 'playing F retunes the patch to F');
   assert.equal(midi.notes[0].vel, 90, 'and the velocity comes through');
@@ -319,7 +333,7 @@ test('an Input node can be pinned to one channel', () => {
   audio.t = 0.2;
   assert.equal(engine.externalNote({ channel: 2, note: 60, velocity: 90, at: 0.2 }), 0, 'wrong channel');
   assert.equal(engine.externalNote({ channel: 3, note: 60, velocity: 90, at: 0.2 }), 1, 'right channel');
-  engine.tick();
+  settle(engine, audio, 0.2);
   assert.equal(midi.notes.length, 1);
 });
 
@@ -335,7 +349,7 @@ test('transpose mode shifts rather than retunes', () => {
   engine.start();
   audio.t = 0.2;
   engine.externalNote({ channel: 1, note: 67, velocity: 90, at: 0.2 }); // seven above centre
-  engine.tick();
+  settle(engine, audio, 0.2);
   assert.equal(midi.notes[0].note, 67, 'C4 shifted up a fifth');
 });
 
@@ -351,7 +365,7 @@ test('gate mode ignores the pitch', () => {
   engine.start();
   audio.t = 0.2;
   engine.externalNote({ channel: 1, note: 90, velocity: 12, at: 0.2 });
-  engine.tick();
+  settle(engine, audio, 0.2);
   assert.equal(midi.notes[0].note, 60, 'whatever was played, the patch plays its own note');
   assert.equal(midi.notes[0].vel, 77, 'and its own velocity');
 });

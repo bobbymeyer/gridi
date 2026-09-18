@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CELL, routeLine, pathLength, pointAlongPath, distanceToPath, hitNode, hitOutPort,
-  overlapsAny, findFreeCell, portIn, portOut, screenToWorld, worldToScreen,
+  overlapsAny, findFreeCell, portIn, portOut, screenToWorld, worldToScreen, lineCells,
 } from '../src/geometry.js';
 import { createPatch, createNode, addNode } from '../src/model.js';
 
@@ -100,4 +100,30 @@ test('the output handle is the whole right edge, not a dot', () => {
   assert.equal(hitOutPort(p, { x: r.x + 4, y: r.y + 10 }), null);
   assert.equal(hitOutPort(p, { x: right + 40, y: r.y + 10 }), null);
   assert.equal(hitOutPort(p, { x: right, y: r.y - 30 }), null);
+});
+
+/* --------------------------------------------------- distance as a measure */
+
+test('a line is measured in whole cells', () => {
+  const a = node(0, 0);
+  for (const to of [node(10, 0), node(10, 6), node(30, 0), node(4, 12)]) {
+    const cells = lineCells(a, to);
+    assert.equal(cells, Math.round(cells), 'never a fraction of a cell');
+    assert.ok(cells > 0);
+  }
+});
+
+test('the further apart two nodes are, the longer the line between them', () => {
+  const a = node(0, 0);
+  const near = lineCells(a, node(10, 0));
+  const far = lineCells(a, node(40, 0));
+  assert.ok(far > near, `${far} should beat ${near}`);
+  // A row down is a detour, because the route has to turn to get there.
+  assert.ok(lineCells(a, node(10, 8)) > near);
+});
+
+test('measuring a line agrees with the route that is drawn', () => {
+  const a = node(0, 0);
+  const b = node(24, 8);
+  assert.equal(lineCells(a, b), Math.round(pathLength(routeLine(a, b)) / CELL));
 });

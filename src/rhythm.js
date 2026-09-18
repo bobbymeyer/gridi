@@ -1,7 +1,9 @@
 // Rhythmic feel. Everything a pulse emitter knows about *when* lives here.
 //
-// Deliberately geometry-free: where a node sits on the grid never affects
-// timing. Feel is a property of the emitter, exactly as the design calls for.
+// No geometry in this file: it deals in beats, and knows nothing about where
+// anything sits. The patch grid is the one place the two meet -- a cell is
+// worth a note value, and `gridBeats` is what that value is. Turning a line's
+// length into a delay happens in the engine, using this number.
 
 import { clamp, wrap } from './util.js';
 
@@ -24,6 +26,24 @@ export const DIVISIONS = {
 export const DIVISION_KEYS = Object.keys(DIVISIONS);
 
 export const divisionBeats = (key) => (DIVISIONS[key] ?? DIVISIONS['1/16']).beats;
+
+/**
+ * Note values a grid cell can be worth. Straight divisions and triplets only:
+ * a dotted cell would put the bar somewhere between two rules, and the heavy
+ * rules are the bar lines.
+ */
+export const GRID_KEYS = ['1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/4T', '1/8T', '1/16T'];
+
+export const DEFAULT_GRID = '1/16';
+
+/** Beats one grid cell is worth. This is what makes distance into time. */
+export const gridBeats = (key) => divisionBeats(GRID_KEYS.includes(key) ? key : DEFAULT_GRID);
+
+/** Cells to a beat, which is where the medium grid rules go. */
+export const cellsPerBeat = (key) => Math.round(1 / gridBeats(key)) || 1;
+
+/** Cells to a bar, which is where the heavy grid rules go. */
+export const cellsPerBar = (key, beatsPerBar = 4) => Math.round(beatsPerBar / gridBeats(key));
 
 /**
  * Length of one step in beats, including any polyrhythm ratio.

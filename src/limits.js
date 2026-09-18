@@ -24,9 +24,17 @@ export const LIMITS = {
   lines: 800,
   /** Travelling pulses drawn at once. */
   visualPulses: 900,
-  /** Repeated overloads within this window before the transport is stopped. */
+  /**
+   * Repeated overloads within this window before the transport is stopped.
+   *
+   * The window is wide because a runaway now takes its time. A loop drawn
+   * across the grid costs a musical delay on every hop, so after the queue is
+   * dumped it needs seconds to build back up -- with a six-second window the
+   * same broken patch would blow up all evening without ever being counted as
+   * repeated trouble.
+   */
   escalateAfter: 3,
-  escalateWithin: 6,
+  escalateWithin: 30,
 };
 
 /** The line that belongs on every one of these, because it is the real answer. */

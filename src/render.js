@@ -4,7 +4,8 @@
 // along it, and the grid itself is drawn rather than implied. Colours come from
 // the stylesheet so the theme switch only has to happen in one place.
 
-import { CELL, MODULE, nodeRect, portOut, routeLine, pointAlongPath, pathMidpoint } from './geometry.js';
+import { CELL, nodeRect, portOut, routeLine, pointAlongPath, pathMidpoint } from './geometry.js';
+import { cellsPerBar, cellsPerBeat } from './rhythm.js';
 import { typeMeta } from './nodes.js';
 import { DIVISIONS, euclid, patternString } from './rhythm.js';
 import { SCALES, NOTE_NAMES } from './music.js';
@@ -15,8 +16,11 @@ import { clamp } from './util.js';
 import { LIMITS } from './limits.js';
 
 const FIRE_MS = 220;
-const PULSE_MIN = 0.12; // seconds of visible travel for a zero-delay line
-const PULSE_MAX = 1.4;
+const PULSE_MIN = 0.12; // seconds of visible travel for a line with no length
+// A pulse is drawn walking the whole of its line for the whole of its travel,
+// so the cap has to allow for a long line on a slow, coarse grid. It is here
+// only to stop a dot sitting on screen forever if something goes wrong.
+const PULSE_MAX = 60;
 
 export function ordinal(n) {
   const v = Math.round(n);
@@ -131,6 +135,7 @@ export class Renderer {
       blue: v('--blue', '#1b3fd8'),
       yellow: v('--yellow', '#ffc500'),
       fine: v('--grid-fine', 'rgba(17,17,17,.09)'),
+      beat: v('--grid-beat', 'rgba(17,17,17,.14)'),
       module: v('--grid-module', 'rgba(17,17,17,.2)'),
     };
   }
@@ -159,7 +164,10 @@ export class Renderer {
   /**
    * A pulse is drawn arriving exactly when it sounds: the dot is launched
    * backwards from its arrival time rather than forwards from its departure.
-   * A line with a musical delay shows the pulse crawling for that whole delay.
+   *
+   * Since a line's length is its travel time, every dot in the patch moves at
+   * the same speed -- a cell of line takes a cell's worth of music to cross,
+   * wherever it is. Watching the patch is reading the score.
    */
   addPulse(evt) {
     const delaySec = evt.arriveTime - (evt.fromTime ?? evt.arriveTime);
@@ -228,7 +236,7 @@ export class Renderer {
     ctx.scale(view.zoom, view.zoom);
     ctx.translate(view.x, view.y);
 
-    this.drawGrid(view);
+    this.drawGrid(view, cellsPerBeat(patch.grid), cellsPerBar(patch.grid));
 
     const index = new Map(patch.nodes.map((n) => [n.id, n]));
     for (const line of patch.lines) this.drawLine(patch, line, index, selection, view);
@@ -241,7 +249,15 @@ export class Renderer {
     this.sweep(now);
   }
 
-  drawGrid(view) {
+  /**
+   * The field the patch is composed on, ruled in three weights.
+   *
+   * A cell is a note value, so the rules are the music: light for the cell,
+   * medium for the beat, heavy for the bar. Refining the grid moves the beat
+   * and bar rules rather than changing what they mean, so the field reads the
+   * same at every setting and a pulse's travel can be counted off it.
+   */
+  drawGrid(view, beat, module) {
     const ctx = this.ctx;
     const left = -view.x;
     const top = -view.y;
@@ -259,13 +275,13 @@ export class Renderer {
       ctx.lineWidth = 1 / view.zoom;
       ctx.beginPath();
       for (let c = startCol; c <= endCol; c += 1) {
-        if (c % MODULE === 0) continue;
+        if (c % beat === 0 || c % module === 0) continue;
         const x = c * CELL;
         ctx.moveTo(x, top);
         ctx.lineTo(x, bottom);
       }
       for (let r = startRow; r <= endRow; r += 1) {
-        if (r % MODULE === 0) continue;
+        if (r % beat === 0 || r % module === 0) continue;
         const y = r * CELL;
         ctx.moveTo(left, y);
         ctx.lineTo(right, y);
@@ -273,16 +289,37 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // The module rules are the emphasised structure of the composition.
+    // Beat rules, drawn only when a beat is more than one cell -- on a quarter
+    // note grid every cell is a beat, and ruling them all would just be noise.
+    if (beat > 1 && px >= 4) {
+      ctx.strokeStyle = this.colors.beat;
+      ctx.lineWidth = 1 / view.zoom;
+      ctx.beginPath();
+      for (let c = Math.floor(startCol / beat) * beat; c <= endCol; c += beat) {
+        if (c % module === 0) continue;
+        const x = c * CELL;
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+      }
+      for (let r = Math.floor(startRow / beat) * beat; r <= endRow; r += beat) {
+        if (r % module === 0) continue;
+        const y = r * CELL;
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+      }
+      ctx.stroke();
+    }
+
+    // The bar rules are the emphasised structure of the composition.
     ctx.strokeStyle = this.colors.module;
     ctx.lineWidth = 1 / view.zoom;
     ctx.beginPath();
-    for (let c = Math.floor(startCol / MODULE) * MODULE; c <= endCol; c += MODULE) {
+    for (let c = Math.floor(startCol / module) * module; c <= endCol; c += module) {
       const x = c * CELL;
       ctx.moveTo(x, top);
       ctx.lineTo(x, bottom);
     }
-    for (let r = Math.floor(startRow / MODULE) * MODULE; r <= endRow; r += MODULE) {
+    for (let r = Math.floor(startRow / module) * module; r <= endRow; r += module) {
       const y = r * CELL;
       ctx.moveTo(left, y);
       ctx.lineTo(right, y);

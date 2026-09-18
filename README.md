@@ -22,6 +22,27 @@ npm test
 Open `http://localhost:8080/tests/audio-check.html` for the synth checks, which
 need a browser.
 
+## the grid
+
+A grid cell is worth a note value. A pulse crosses one cell in that much
+musical time, so a line's length is how long its pulses take to walk it.
+Moving a node retimes the patch.
+
+| Setting | Effect |
+| --- | --- |
+| Grid | What one cell is worth: 1/1 to 1/32, plus 1/4T, 1/8T, 1/16T. Default 1/16. |
+
+The field is ruled in three weights: light for the cell, medium for the beat,
+heavy for the bar. They follow the grid setting.
+
+Select a line to read its length in cells and what that comes to in beats.
+
+| Node | What distance does to it |
+| --- | --- |
+| Split | Fans out on one instant; each branch lands by its own length. Level branches arrive together, a row apart flams. |
+| Logic | Its feeds must be drawn the same length, or the pulses it catches never coincide. |
+| Param, Node scope | Writes when the pulse passes it; the target reads when its own pulse arrives. Place it near its target, or use Signal scope, which rides with the pulse. |
+
 ## nodes
 
 | Node | In | Out | Does |
@@ -156,7 +177,8 @@ A line carries state, not just a connection.
 | Channels | A set, each with its own output, transpose and velocity. One pulse fans out across all of them. |
 | Channel mode | Inherit passes on what arrived; Set here overrides from this line down. |
 | Scale and key | Same two modes. Set here retunes everything the line feeds. |
-| Delay | 0–4 beats. The only thing that shifts timing; grid distance never does. |
+| Travel | Read-only. The line's length in cells, and what that comes to in beats. |
+| Extra delay | 0–4 beats on top of the travel time, for anything the grid cannot say. |
 | Mute | Stops passing pulses without unpatching. |
 
 Scales: Major, Nat Minor, Harm Minor, Mel Minor, Dorian, Phrygian, Lydian,
@@ -164,6 +186,26 @@ Mixolydian, Locrian, Maj Pent, Min Pent, Blues, Whole Tone, Chromatic.
 
 Degree overflow: `Extend` carries past the end of the scale into the next
 octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
+
+## patches
+
+A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
+rail; **Save** names the file after it.
+
+| To open one | How |
+| --- | --- |
+| A file | Drop it anywhere on the canvas, or press **Open** |
+| Its text | Paste it onto the canvas |
+
+Opening replaces the canvas and goes on the undo stack. ⌘Z puts back what was
+there.
+
+Files are stamped `"app": "gridi"`. Anything that is not a patch is declined,
+not opened. Files saved before the stamp are recognised by their shape and
+still open.
+
+Device bindings are not in the file. A patch names output slots A–D; each
+machine binds its own devices.
 
 ## MIDI
 
@@ -201,6 +243,8 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Pan | Drag empty grid, or alt-drag |
 | Zoom | Wheel |
 | Fit to patch | F |
+| Set what a cell is worth | Grid, in the header |
+| Open a patch | Drop the file on the canvas, or paste its text |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -252,6 +296,23 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 4. On the LFO, set Cycle to the sweep length and From/To to the range.
 5. Patch a Pulse into the LFO to restart the sweep in time.
 
+### put two parts in step
+
+1. Patch a **Split** into two Note nodes.
+2. Put both Note nodes in the same row as each other. Equal lengths, so their
+   pulses arrive together.
+3. Drag one of them a row down and play it again: the line got longer, so that
+   part is now late. Select the line to see by how much.
+4. Use the **Grid** setting to scale the whole patch at once — 1/16 halves every
+   travel time, 1/4 doubles it.
+
+### share a patch
+
+1. Give it a name in the left rail.
+2. **Save**. The file lands in your downloads, named after the patch.
+3. Send the file, or its text.
+4. They drop it on their canvas, or paste it there.
+
 ### follow another sequencer
 
 1. Choose the master's port under **MIDI in**.
@@ -272,7 +333,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 220 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 241 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

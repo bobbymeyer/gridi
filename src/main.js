@@ -8,11 +8,11 @@ import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
 import {
   createPatch, createNode, addNode, removeNode, removeLine, connect, canConnect,
-  demoPatch, serialize, deserialize, nodeById,
+  demoPatch, serialize, deserialize, readPatch, nodeById,
 } from './model.js';
 import { typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES, noteName, resolveDegree } from './music.js';
-import { euclid, patternString } from './rhythm.js';
+import { euclid, patternString, GRID_KEYS } from './rhythm.js';
 import {
   CELL, screenToWorld, hitNode, hitOutPort, hitLine, snapCell, findFreeCell, nodeRect,
 } from './geometry.js';
@@ -322,6 +322,13 @@ function syncHeader() {
   syncMidiIn();
   $('root').value = String(state.patch.root);
   $('scale').value = state.patch.scale;
+  $('grid').value = state.patch.grid;
+  // Set unconditionally, caret included: opening a patch has to rename the
+  // field even when the cursor is sitting in it, or the canvas and the label
+  // disagree about what is loaded. Writing the same string back is a no-op, so
+  // typing is not disturbed.
+  const named = state.patch.name === 'Untitled' ? '' : state.patch.name;
+  if ($('patch-name').value !== named) $('patch-name').value = named;
   $('counts').textContent = counts(state.patch);
   $('sel-kind').textContent =
     state.selection.kind === 'node'
@@ -648,19 +655,114 @@ function exportPatch() {
   a.download = `${(state.patch.name || 'gridi-patch').replace(/[^\w-]+/g, '-').toLowerCase()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  setStatus('Patch saved to your downloads.', '');
+  setStatus(`Saved as ${a.download}. Drop that file on any Gridi canvas to open it.`, 'Patch.');
 }
 
 $('file').addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    loadPatch(deserialize(await file.text(), onPatchLimit));
-    setStatus(`Opened ${file.name}.`, '');
+    openPatch(deserialize(await file.text(), onPatchLimit), file.name);
   } catch {
     setStatus('That file could not be read as a patch.', 'Sorry:');
   }
   e.target.value = '';
+});
+
+/* ------------------------------------------------------------- open a patch */
+
+/**
+ * Take a patch that arrived from outside: a file, a drop, a paste.
+ *
+ * It replaces what is on the canvas, so it goes through the undo stack --
+ * dropping the wrong file on a patch you have been working on should cost one
+ * keystroke to put right, not the afternoon.
+ */
+function openPatch(patch, from = '') {
+  snapshot();
+  loadPatch(patch, { keepHistory: true });
+  const named = patch.name && patch.name !== 'Untitled' ? `“${patch.name}”` : from || 'that patch';
+  setStatus(`${named} is on the canvas. ⌘Z puts back what was here.`, 'Opened.');
+}
+
+/**
+ * Anything dragged onto the stage, or pasted into it.
+ *
+ * A file is read for its text; a drag from a browser or an editor arrives as
+ * text already. Either way it has to look like a patch before it is allowed to
+ * replace one, so dropping a photo on the canvas does nothing rather than
+ * wiping the work.
+ */
+async function openFromTransfer({ file, text }) {
+  const body = file ? await file.text() : text;
+  const patch = body ? readPatch(body, onPatchLimit) : null;
+  if (!patch) {
+    setStatus(
+      file
+        ? `${file.name} is not a Gridi patch.`
+        : 'That is not a Gridi patch. Save one with Save, and drop the file back here.',
+      'Nothing opened.',
+    );
+    return false;
+  }
+  openPatch(patch, file?.name);
+  return true;
+}
+
+/*
+ * Drag and drop. The counter is because dragenter and dragleave both fire for
+ * every child element the pointer crosses, so a single boolean flickers the
+ * overlay on and off as the file moves across the stage.
+ */
+const stage = document.querySelector('.stage');
+let dragDepth = 0;
+
+function showDrop(on) {
+  $('drop').hidden = !on;
+}
+
+function carriesFile(e) {
+  return [...(e.dataTransfer?.types ?? [])].some((t) => t === 'Files' || t === 'text/plain');
+}
+
+stage.addEventListener('dragenter', (e) => {
+  if (!carriesFile(e)) return;
+  e.preventDefault();
+  dragDepth += 1;
+  showDrop(true);
+});
+
+stage.addEventListener('dragover', (e) => {
+  if (!carriesFile(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+
+stage.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) showDrop(false);
+});
+
+stage.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  showDrop(false);
+  const file = e.dataTransfer?.files?.[0];
+  const text = e.dataTransfer?.getData('text/plain');
+  if (!file && !text) return;
+  await openFromTransfer({ file, text });
+});
+
+/*
+ * Paste. How a patch shared in a chat window actually arrives: as the text of
+ * the file rather than the file. Typing into a field is left alone.
+ */
+document.addEventListener('paste', async (e) => {
+  const target = e.target;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+  const text = e.clipboardData?.getData('text/plain');
+  if (!text || !text.trim().startsWith('{')) return;
+  if (await openFromTransfer({ text })) e.preventDefault();
 });
 
 $('clock-out').addEventListener('click', () => {
@@ -677,6 +779,13 @@ $('clock-out').addEventListener('click', () => {
 });
 $('guard-close').addEventListener('click', hideGuard);
 $('play').addEventListener('click', toggleTransport);
+// The name is what a shared patch is called on the other person's canvas, and
+// what the saved file is called on this one.
+$('patch-name').addEventListener('input', () => {
+  state.patch.name = $('patch-name').value.trim() || 'Untitled';
+  save();
+});
+
 $('import').addEventListener('click', () => $('file').click());
 $('export').addEventListener('click', exportPatch);
 $('new').addEventListener('click', () => {
@@ -919,6 +1028,21 @@ function populateKeySelects() {
   });
   scale.addEventListener('change', () => {
     state.patch.scale = scale.value;
+    save();
+  });
+
+  // What one cell of the grid is worth. Changing it retimes every line in the
+  // patch at once and closes up the bar rules to match.
+  const grid = $('grid');
+  for (const key of GRID_KEYS) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    grid.append(opt);
+  }
+  grid.addEventListener('change', () => {
+    state.patch.grid = grid.value;
+    setStatus(`a cell is now ${grid.value} — every line in the patch is retimed.`, 'Grid:');
     save();
   });
 }

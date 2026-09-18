@@ -35,6 +35,14 @@
     </div>
 
     <div class="mod">
+      <span class="micro">grid</span>
+      <div class="mod__row">
+        <select class="field" id="grid" aria-label="Note value of one grid cell" title="What one grid cell is worth: how long a pulse takes to cross it"></select>
+        <span class="micro">per cell</span>
+      </div>
+    </div>
+
+    <div class="mod">
       <span class="micro">project key</span>
       <div class="mod__row">
         <select class="field" id="root" aria-label="Key"></select>
@@ -84,6 +92,7 @@
       </p>
       <div class="rail__foot">
         <span class="micro">patch</span>
+        <input class="field rail__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
         <div class="rail__buttons">
           <button class="btn" id="new">new</button>
           <button class="btn" id="demo">demo</button>
@@ -97,6 +106,10 @@
     <section class="stage">
       <canvas id="canvas"></canvas>
       <div class="stage__placing" id="placing" hidden></div>
+      <div class="stage__drop" id="drop" hidden>
+        <b>drop to open</b>
+        <span>a patch saved from Gridi</span>
+      </div>
       <div class="stage__hint">
         <span><b>space</b> play</span>
         <span><b>right edge</b> patch</span>
@@ -104,6 +117,7 @@
         <span><b>wheel</b> zoom</span>
         <span><b>del</b> remove</span>
         <span><b>F</b> fit</span>
+        <span><b>drop a file</b> open</span>
       </div>
     </section>
 
