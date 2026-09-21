@@ -9,9 +9,26 @@
   "root": 0,
   "scale": "major",
   "seed": 1,
+  "sounds": [
+    {
+      "out": "A",
+      "ch": 2,
+      "program": 32
+    },
+    {
+      "out": "A",
+      "ch": 3,
+      "program": 24
+    },
+    {
+      "out": "A",
+      "ch": 4,
+      "program": 73
+    }
+  ],
   "nodes": [
     {
-      "id": "n1nu",
+      "id": "n1fj",
       "type": "pulse",
       "col": 0,
       "row": 40,
@@ -35,7 +52,7 @@
       }
     },
     {
-      "id": "n27t",
+      "id": "n2rf",
       "type": "key",
       "col": 13,
       "row": 40,
@@ -50,7 +67,7 @@
       }
     },
     {
-      "id": "n4zh",
+      "id": "n4b0",
       "type": "pulse",
       "col": 0,
       "row": 0,
@@ -74,7 +91,7 @@
       }
     },
     {
-      "id": "n52o",
+      "id": "n5lp",
       "type": "split",
       "col": 10,
       "row": 0,
@@ -84,7 +101,7 @@
       }
     },
     {
-      "id": "n7hc",
+      "id": "n720",
       "type": "note",
       "col": 20,
       "row": 0,
@@ -101,7 +118,7 @@
       }
     },
     {
-      "id": "n9ge",
+      "id": "n9g3",
       "type": "note",
       "col": 21,
       "row": 5,
@@ -118,7 +135,7 @@
       }
     },
     {
-      "id": "nb0m",
+      "id": "nb2i",
       "type": "note",
       "col": 22,
       "row": 10,
@@ -135,7 +152,7 @@
       }
     },
     {
-      "id": "nde9",
+      "id": "ndqq",
       "type": "note",
       "col": 25,
       "row": 15,
@@ -152,7 +169,7 @@
       }
     },
     {
-      "id": "nfjz",
+      "id": "nf9o",
       "type": "note",
       "col": 28,
       "row": 20,
@@ -169,7 +186,7 @@
       }
     },
     {
-      "id": "nhda",
+      "id": "nh74",
       "type": "pulse",
       "col": 0,
       "row": 28,
@@ -193,7 +210,7 @@
       }
     },
     {
-      "id": "niou",
+      "id": "niwz",
       "type": "router",
       "col": 14,
       "row": 28,
@@ -203,7 +220,7 @@
       }
     },
     {
-      "id": "nkx1",
+      "id": "nkav",
       "type": "note",
       "col": 36,
       "row": 28,
@@ -220,7 +237,7 @@
       }
     },
     {
-      "id": "nmwh",
+      "id": "nmq5",
       "type": "note",
       "col": 31,
       "row": 33,
@@ -237,7 +254,7 @@
       }
     },
     {
-      "id": "nohu",
+      "id": "no92",
       "type": "pulse",
       "col": 0,
       "row": 56,
@@ -261,7 +278,7 @@
       }
     },
     {
-      "id": "npr9",
+      "id": "npha",
       "type": "chance",
       "col": 14,
       "row": 56,
@@ -272,7 +289,7 @@
       }
     },
     {
-      "id": "nrn2",
+      "id": "nrip",
       "type": "router",
       "col": 28,
       "row": 56,
@@ -282,7 +299,7 @@
       }
     },
     {
-      "id": "ntov",
+      "id": "ntm8",
       "type": "note",
       "col": 58,
       "row": 56,
@@ -299,7 +316,7 @@
       }
     },
     {
-      "id": "nvxe",
+      "id": "nv4v",
       "type": "note",
       "col": 53,
       "row": 61,
@@ -316,7 +333,7 @@
       }
     },
     {
-      "id": "nx1s",
+      "id": "nxgt",
       "type": "note",
       "col": 48,
       "row": 66,
@@ -333,7 +350,7 @@
       }
     },
     {
-      "id": "nz0y",
+      "id": "nz65",
       "type": "note",
       "col": 43,
       "row": 71,
@@ -352,9 +369,9 @@
   ],
   "lines": [
     {
-      "id": "l3nd",
-      "from": "n1nu",
-      "to": "n27t",
+      "id": "l34h",
+      "from": "n1fj",
+      "to": "n2rf",
       "channelMode": "inherit",
       "channels": [
         {
@@ -372,9 +389,9 @@
       "weight": 1
     },
     {
-      "id": "l6gf",
-      "from": "n4zh",
-      "to": "n52o",
+      "id": "l68j",
+      "from": "n4b0",
+      "to": "n5lp",
       "channelMode": "inherit",
       "channels": [
         {
@@ -392,9 +409,9 @@
       "weight": 1
     },
     {
-      "id": "l8ia",
-      "from": "n52o",
-      "to": "n7hc",
+      "id": "l8f2",
+      "from": "n5lp",
+      "to": "n720",
       "channelMode": "set",
       "channels": [
         {
@@ -412,9 +429,9 @@
       "weight": 1
     },
     {
-      "id": "lalj",
-      "from": "n52o",
-      "to": "n9ge",
+      "id": "lani",
+      "from": "n5lp",
+      "to": "n9g3",
       "channelMode": "set",
       "channels": [
         {
@@ -432,9 +449,9 @@
       "weight": 1
     },
     {
-      "id": "lcjb",
-      "from": "n52o",
-      "to": "nb0m",
+      "id": "lces",
+      "from": "n5lp",
+      "to": "nb2i",
       "channelMode": "set",
       "channels": [
         {
@@ -452,9 +469,9 @@
       "weight": 1
     },
     {
-      "id": "le3s",
-      "from": "n52o",
-      "to": "nde9",
+      "id": "le9a",
+      "from": "n5lp",
+      "to": "ndqq",
       "channelMode": "set",
       "channels": [
         {
@@ -472,9 +489,9 @@
       "weight": 1
     },
     {
-      "id": "lgr5",
-      "from": "n52o",
-      "to": "nfjz",
+      "id": "lgrl",
+      "from": "n5lp",
+      "to": "nf9o",
       "channelMode": "set",
       "channels": [
         {
@@ -492,9 +509,9 @@
       "weight": 1
     },
     {
-      "id": "lj87",
-      "from": "nhda",
-      "to": "niou",
+      "id": "ljaq",
+      "from": "nh74",
+      "to": "niwz",
       "channelMode": "inherit",
       "channels": [
         {
@@ -512,9 +529,9 @@
       "weight": 1
     },
     {
-      "id": "llvi",
-      "from": "niou",
-      "to": "nkx1",
+      "id": "ll7e",
+      "from": "niwz",
+      "to": "nkav",
       "channelMode": "set",
       "channels": [
         {
@@ -532,9 +549,9 @@
       "weight": 1
     },
     {
-      "id": "lnj5",
-      "from": "niou",
-      "to": "nmwh",
+      "id": "lnkh",
+      "from": "niwz",
+      "to": "nmq5",
       "channelMode": "set",
       "channels": [
         {
@@ -552,9 +569,9 @@
       "weight": 1
     },
     {
-      "id": "lqn8",
-      "from": "nohu",
-      "to": "npr9",
+      "id": "lqof",
+      "from": "no92",
+      "to": "npha",
       "channelMode": "inherit",
       "channels": [
         {
@@ -572,9 +589,9 @@
       "weight": 1
     },
     {
-      "id": "lspi",
-      "from": "npr9",
-      "to": "nrn2",
+      "id": "ls40",
+      "from": "npha",
+      "to": "nrip",
       "channelMode": "inherit",
       "channels": [
         {
@@ -592,9 +609,9 @@
       "weight": 1
     },
     {
-      "id": "luaq",
-      "from": "nrn2",
-      "to": "ntov",
+      "id": "lu57",
+      "from": "nrip",
+      "to": "ntm8",
       "channelMode": "set",
       "channels": [
         {
@@ -612,9 +629,9 @@
       "weight": 1
     },
     {
-      "id": "lwnf",
-      "from": "nrn2",
-      "to": "nvxe",
+      "id": "lw0m",
+      "from": "nrip",
+      "to": "nv4v",
       "channelMode": "set",
       "channels": [
         {
@@ -632,9 +649,9 @@
       "weight": 1
     },
     {
-      "id": "lylr",
-      "from": "nrn2",
-      "to": "nx1s",
+      "id": "lypv",
+      "from": "nrip",
+      "to": "nxgt",
       "channelMode": "set",
       "channels": [
         {
@@ -652,9 +669,9 @@
       "weight": 1
     },
     {
-      "id": "l10y5",
-      "from": "nrn2",
-      "to": "nz0y",
+      "id": "l1024",
+      "from": "nrip",
+      "to": "nz65",
       "channelMode": "set",
       "channels": [
         {

@@ -105,6 +105,8 @@ export class Engine {
     this.anchorBeat = 0;
     this.running = true;
 
+    this.sendSounds(patch, this.anchorTime - 0.05);
+
     // Tell the rig we are starting before the first pulse of clock reaches it.
     this.clockPulse = 0;
     this.clockOn = Boolean(patch.clockOut);
@@ -124,6 +126,26 @@ export class Engine {
     this.emitters.clear();
     this.midi.allOff();
     this.audio.allOff();
+  }
+
+  /**
+   * Put each channel on the sound the patch asks for.
+   *
+   * Sent well before the anchor rather than alongside the Start, because a
+   * device given a program change and a note in the same millisecond is
+   * entitled to play the first note on the old sound. Fifty milliseconds is
+   * nothing to wait and plenty for anything to act on.
+   *
+   * @returns {number} how many were sent
+   */
+  sendSounds(patch, at) {
+    let sent = 0;
+    for (const sound of patch.sounds ?? []) {
+      if (this.midi.sendProgram({ slot: sound.out, channel: sound.ch, program: sound.program, at })) {
+        sent += 1;
+      }
+    }
+    return sent;
   }
 
   /** Re-anchor so a tempo change takes effect from here, not from bar one. */

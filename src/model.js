@@ -11,6 +11,7 @@ import { DIVISIONS, DEFAULT_GRID, GRID_KEYS } from './rhythm.js';
 import { isWaveform } from './voice.js';
 import { LIMITS } from './limits.js';
 import { asSlot, DEFAULT_SLOT } from './midi.js';
+import { DRUM_CHANNEL } from './gm.js';
 
 export const PATCH_VERSION = 2;
 
@@ -68,10 +69,109 @@ export function createPatch(name = 'Untitled') {
     root: 0,
     scale: 'minPent',
     seed: 1,
+    // What each channel should be playing, sent as a program change when the
+    // transport starts. Empty means the patch has no opinion.
+    sounds: [],
     nodes: [],
     lines: [],
     view: { x: 0, y: 0, zoom: 1 },
   };
+}
+
+/**
+ * One entry a patch makes about a channel: which sound it wants there.
+ *
+ * Programs are stored as they go down the wire, zero to a hundred and
+ * twenty-seven, which is one less than the number in every General MIDI chart
+ * ever printed. `src/gm.js` turns them into names so nobody has to hold that
+ * in their head.
+ */
+export function createSound(ch, program, out = DEFAULT_SLOT) {
+  return { out: asSlot(out), ch: clamp(Math.round(ch), 1, 16), program: clamp(Math.round(program), 0, 127) };
+}
+
+/** Drop anything malformed, and keep one entry per output and channel. */
+function readSounds(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const s of raw) {
+    if (!s || !Number.isFinite(Number(s.ch)) || !Number.isFinite(Number(s.program))) continue;
+    const sound = createSound(s.ch, s.program, s.out);
+    const key = `${sound.out}:${sound.ch}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(sound);
+  }
+  return out;
+}
+
+/**
+ * Every output and channel the patch actually plays on, in a stable order.
+ *
+ * Counting the channels named on lines would over-report: a line that inherits
+ * names a channel it never uses, and one that sets a channel feeding nothing
+ * that sounds is not a channel either. So this walks the graph the way a pulse
+ * does -- carrying a channel set, letting each line that sets its own replace
+ * it -- and records what arrives wherever a note is made.
+ */
+export function usedChannels(patch) {
+  const seen = new Map();
+  const note = (chans) => {
+    for (const chan of chans) {
+      const out = asSlot(chan.out);
+      const key = `${out}:${chan.ch}`;
+      if (!seen.has(key)) seen.set(key, { out, ch: chan.ch });
+    }
+  };
+
+  for (const source of patch.nodes) {
+    if (!SOURCES.has(source.type)) continue;
+    const start = [{ out: DEFAULT_SLOT, ch: clamp(Math.round(source.params.channel ?? 1), 1, 16) }];
+    // Breadth first, and a node is only re-entered on a different channel set,
+    // so a patch that loops back on itself still terminates.
+    const walked = new Set();
+    const queue = [[source.id, start]];
+    while (queue.length) {
+      const [id, chans] = queue.shift();
+      const key = `${id}:${chans.map((c) => `${c.out}${c.ch}`).join(',')}`;
+      if (walked.has(key)) continue;
+      walked.add(key);
+      const here = nodeById(patch, id);
+      if (here && sendsMidi(here)) note(chans);
+      for (const line of outgoing(patch, id)) {
+        queue.push([line.to, line.channelMode === 'set' ? line.channels : chans]);
+      }
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.out.localeCompare(b.out) || a.ch - b.ch);
+}
+
+/** The program a patch wants on a channel, or null if it has no opinion. */
+export function soundFor(patch, out, ch) {
+  const found = (patch.sounds ?? []).find((s) => s.out === asSlot(out) && s.ch === ch);
+  return found ? found.program : null;
+}
+
+/** Set, or with a null program clear, the sound on one channel. */
+export function setSound(patch, out, ch, program) {
+  const slot = asSlot(out);
+  patch.sounds = (patch.sounds ?? []).filter((s) => !(s.out === slot && s.ch === ch));
+  if (program !== null && program !== undefined) patch.sounds.push(createSound(ch, program, slot));
+  patch.sounds.sort((a, b) => a.out.localeCompare(b.out) || a.ch - b.ch);
+  return patch.sounds;
+}
+
+/** Node types that start a pulse, and so name the channel it sets out on. */
+const SOURCES = new Set(['pulse', 'input', 'lfo']);
+
+/** Does this node put something on the wire, as it is set up? */
+function sendsMidi(node) {
+  if (node.type === 'note') return node.params.midiOn !== false;
+  // A Param only reaches a device in CC scope; the other two move something
+  // inside the patch. A Voice is the browser's own oscillators, never MIDI.
+  if (node.type === 'param') return node.params.scope === 'midi';
+  return false;
 }
 
 export const nodeById = (patch, id) => patch.nodes.find((n) => n.id === id);
@@ -216,6 +316,7 @@ export function deserialize(text, onLimit) {
   patch.root = clamp(Math.round(Number(raw.root) || 0), 0, 11);
   patch.scale = SCALES[raw.scale] ? raw.scale : 'minPent';
   patch.seed = Number(raw.seed) || 1;
+  patch.sounds = readSounds(raw.sounds);
   if (raw.view) {
     patch.view = {
       x: Number(raw.view.x) || 0,

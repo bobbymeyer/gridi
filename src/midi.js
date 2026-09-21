@@ -352,6 +352,28 @@ export class MidiOut {
     return true;
   }
 
+  /**
+   * Choose the sound a channel plays.
+   *
+   * Never throttled and never deduplicated: a program change is rare, and it
+   * is the message that decides whether anything afterwards sounds like what
+   * it was written for. Sending one that the device already has costs nothing.
+   *
+   * @returns {boolean} whether it reached a device
+   */
+  sendProgram({ slot = DEFAULT_SLOT, channel, program, at }) {
+    const out = this.portFor(asSlot(slot));
+    if (!out) return false;
+    const ch = clamp(Math.round(channel), 1, 16) - 1;
+    const value = clamp(Math.round(program), 0, 127);
+    try {
+      out.send([0xc0 | ch, value], this.toMidiTime(at));
+    } catch {
+      return false; // port closed mid-send
+    }
+    return true;
+  }
+
   /** Hand one queued note-off to its device, optionally earlier than planned. */
   sendOff(off, at = off.time) {
     if (off.done) return;

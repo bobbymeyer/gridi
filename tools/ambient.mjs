@@ -8,7 +8,7 @@
 // second is a little over twenty-two hours.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, channel } from './lib.mjs';
+import { downstream, channel, sounds, GM } from './lib.mjs';
 
 /** Loop lengths in beats, and what each voice plays when its turn comes. */
 const LOOPS = [
@@ -72,5 +72,5 @@ export function ambientPatch() {
     line: channel(1),
   });
 
-  return p;
+  return sounds(p, { 1: GM.warmPad });
 }

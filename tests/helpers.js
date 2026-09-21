@@ -16,6 +16,11 @@ export function fakeMidi() {
       this.controls.push({ slot, ch: channel, cc: controller, value, at });
       return true;
     },
+    programs: [],
+    sendProgram({ slot = 'A', channel, program, at }) {
+      this.programs.push({ slot, ch: channel, program, at });
+      return true;
+    },
     allOff() { this.messages.push({ type: 'allOff' }); },
     flush() {},
     sendClock(at) { this.messages.push({ type: 'clock', at }); },

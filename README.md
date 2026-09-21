@@ -221,6 +221,34 @@ several of them is arithmetic:
 node tools/build.mjs
 ```
 
+## sounds
+
+**Sounds** in the left rail lists the channels a patch plays on, worked out
+from the graph, and sets a General MIDI program for each. Gridi sends them as
+program changes 50ms before the first note, so a receiving module is on the
+right sound before it has anything to play.
+
+| | |
+| --- | --- |
+| Numbers | 0–127, as they go down the wire. Every printed GM chart counts from 1 |
+| Channel 10 | Offered as kits rather than instruments |
+| Leave as it is | No entry, no program change: the device keeps whatever it had |
+
+Bank select is not sent, so a module with more than 128 sounds needs its bank
+chosen on the device.
+
+What the library asks for:
+
+| Patch | ch 1 | ch 2 | ch 3 | ch 4 | ch 10 |
+| --- | --- | --- | --- | --- | --- |
+| Bossa Nova | | Acoustic Bass | Acoustic Guitar (nylon) | Flute | |
+| Samba | | Acoustic Bass | | | Standard Kit |
+| House | | Synth Bass 1 | Electric Piano 1 | | Electronic Kit |
+| Hip-Hop | | Electric Bass (finger) | | Vibraphone | Standard Kit |
+| Ambient | Pad 2 (warm) | | | | |
+
+Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
+
 ## patches
 
 A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
@@ -257,8 +285,8 @@ machine binds its own devices.
 Outputs are named slots. A patch stores the slot letter; each machine binds its
 own devices, remembered between sessions.
 
-Sent: note on, note off, control change, clock at 24 PPQN, start, stop,
-continue, song position.
+Sent: note on, note off, control change, program change, clock at 24 PPQN,
+start, stop, continue, song position.
 
 Received: clock, start, stop, continue, song position, note on.
 
@@ -280,6 +308,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Set what a cell is worth | Grid, in the header |
 | Open a patch | Drop the file on the canvas, or paste its text |
 | Open a patch that ships with Gridi | Library, in the left rail |
+| Choose what each channel plays | Sounds, in the left rail |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -368,7 +397,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
 voices, Web MIDI for output and input.
 
-`npm test` runs 253 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 269 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

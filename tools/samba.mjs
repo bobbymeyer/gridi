@@ -5,7 +5,7 @@
 // the caixa, which is the whole of why it lands on two and four.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, fan, phase, channel, drum, drumLine, KIT } from './lib.mjs';
+import { downstream, fan, phase, channel, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
 
 const BAR = 16; // cells, at a sixteenth a cell
 const LAUNCH = 8; // where the bar line falls, once everything is in
@@ -109,5 +109,5 @@ export function sambaPatch() {
     });
   });
 
-  return p;
+  return sounds(p, { 2: GM.acousticBass, 10: GM.standardKit });
 }

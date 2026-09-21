@@ -9,9 +9,21 @@
   "root": 9,
   "scale": "minPent",
   "seed": 1,
+  "sounds": [
+    {
+      "out": "A",
+      "ch": 2,
+      "program": 32
+    },
+    {
+      "out": "A",
+      "ch": 10,
+      "program": 0
+    }
+  ],
   "nodes": [
     {
-      "id": "n1179",
+      "id": "n11bk",
       "type": "pulse",
       "col": 0,
       "row": 0,
@@ -35,7 +47,7 @@
       }
     },
     {
-      "id": "n123m",
+      "id": "n12uz",
       "type": "param",
       "col": 10,
       "row": 0,
@@ -53,7 +65,7 @@
       }
     },
     {
-      "id": "n14y3",
+      "id": "n14xn",
       "type": "note",
       "col": 20,
       "row": 0,
@@ -70,7 +82,7 @@
       }
     },
     {
-      "id": "n16oo",
+      "id": "n16x2",
       "type": "pulse",
       "col": 0,
       "row": 12,
@@ -94,7 +106,7 @@
       }
     },
     {
-      "id": "n17e4",
+      "id": "n1734",
       "type": "router",
       "col": 10,
       "row": 12,
@@ -104,7 +116,7 @@
       }
     },
     {
-      "id": "n19nd",
+      "id": "n19tu",
       "type": "note",
       "col": 24,
       "row": 12,
@@ -121,7 +133,7 @@
       }
     },
     {
-      "id": "n1b64",
+      "id": "n1b3d",
       "type": "note",
       "col": 20,
       "row": 16,
@@ -138,7 +150,7 @@
       }
     },
     {
-      "id": "n1db8",
+      "id": "n1dyd",
       "type": "pulse",
       "col": 0,
       "row": 26,
@@ -162,7 +174,7 @@
       }
     },
     {
-      "id": "n1e9i",
+      "id": "n1ejr",
       "type": "split",
       "col": 20,
       "row": 26,
@@ -172,7 +184,7 @@
       }
     },
     {
-      "id": "n1g8s",
+      "id": "n1gk2",
       "type": "note",
       "col": 36,
       "row": 26,
@@ -189,7 +201,7 @@
       }
     },
     {
-      "id": "n1i0j",
+      "id": "n1icm",
       "type": "note",
       "col": 35,
       "row": 30,
@@ -206,7 +218,7 @@
       }
     },
     {
-      "id": "n1kdw",
+      "id": "n1kmk",
       "type": "note",
       "col": 34,
       "row": 34,
@@ -223,7 +235,7 @@
       }
     },
     {
-      "id": "n1mxp",
+      "id": "n1my1",
       "type": "note",
       "col": 34,
       "row": 38,
@@ -240,7 +252,7 @@
       }
     },
     {
-      "id": "n1oxp",
+      "id": "n1oxk",
       "type": "note",
       "col": 32,
       "row": 42,
@@ -257,7 +269,7 @@
       }
     },
     {
-      "id": "n1qwn",
+      "id": "n1qms",
       "type": "note",
       "col": 30,
       "row": 46,
@@ -274,7 +286,7 @@
       }
     },
     {
-      "id": "n1slk",
+      "id": "n1szc",
       "type": "pulse",
       "col": 0,
       "row": 58,
@@ -298,7 +310,7 @@
       }
     },
     {
-      "id": "n1tvg",
+      "id": "n1tze",
       "type": "router",
       "col": 14,
       "row": 58,
@@ -308,7 +320,7 @@
       }
     },
     {
-      "id": "n1vob",
+      "id": "n1vlh",
       "type": "note",
       "col": 36,
       "row": 58,
@@ -325,7 +337,7 @@
       }
     },
     {
-      "id": "n1xm3",
+      "id": "n1x9w",
       "type": "note",
       "col": 32,
       "row": 62,
@@ -342,7 +354,7 @@
       }
     },
     {
-      "id": "n1zdg",
+      "id": "n1z01",
       "type": "pulse",
       "col": 0,
       "row": 72,
@@ -366,7 +378,7 @@
       }
     },
     {
-      "id": "n2048",
+      "id": "n20u9",
       "type": "router",
       "col": 10,
       "row": 72,
@@ -376,7 +388,7 @@
       }
     },
     {
-      "id": "n22vx",
+      "id": "n22kh",
       "type": "note",
       "col": 40,
       "row": 72,
@@ -393,7 +405,7 @@
       }
     },
     {
-      "id": "n247a",
+      "id": "n24v4",
       "type": "note",
       "col": 36,
       "row": 76,
@@ -410,7 +422,7 @@
       }
     },
     {
-      "id": "n26km",
+      "id": "n26ni",
       "type": "note",
       "col": 32,
       "row": 80,
@@ -429,9 +441,9 @@
   ],
   "lines": [
     {
-      "id": "l13gk",
-      "from": "n1179",
-      "to": "n123m",
+      "id": "l13mq",
+      "from": "n11bk",
+      "to": "n12uz",
       "channelMode": "inherit",
       "channels": [
         {
@@ -449,9 +461,9 @@
       "weight": 1
     },
     {
-      "id": "l15i6",
-      "from": "n123m",
-      "to": "n14y3",
+      "id": "l15kw",
+      "from": "n12uz",
+      "to": "n14xn",
       "channelMode": "set",
       "channels": [
         {
@@ -469,9 +481,9 @@
       "weight": 1
     },
     {
-      "id": "l18mq",
-      "from": "n16oo",
-      "to": "n17e4",
+      "id": "l18du",
+      "from": "n16x2",
+      "to": "n1734",
       "channelMode": "inherit",
       "channels": [
         {
@@ -489,9 +501,9 @@
       "weight": 1
     },
     {
-      "id": "l1abf",
-      "from": "n17e4",
-      "to": "n19nd",
+      "id": "l1ah6",
+      "from": "n1734",
+      "to": "n19tu",
       "channelMode": "set",
       "channels": [
         {
@@ -509,9 +521,9 @@
       "weight": 1
     },
     {
-      "id": "l1cw5",
-      "from": "n17e4",
-      "to": "n1b64",
+      "id": "l1cwr",
+      "from": "n1734",
+      "to": "n1b3d",
       "channelMode": "set",
       "channels": [
         {
@@ -529,9 +541,9 @@
       "weight": 1
     },
     {
-      "id": "l1fyu",
-      "from": "n1db8",
-      "to": "n1e9i",
+      "id": "l1frr",
+      "from": "n1dyd",
+      "to": "n1ejr",
       "channelMode": "inherit",
       "channels": [
         {
@@ -549,9 +561,9 @@
       "weight": 1
     },
     {
-      "id": "l1hs0",
-      "from": "n1e9i",
-      "to": "n1g8s",
+      "id": "l1h2g",
+      "from": "n1ejr",
+      "to": "n1gk2",
       "channelMode": "set",
       "channels": [
         {
@@ -569,9 +581,9 @@
       "weight": 1
     },
     {
-      "id": "l1j31",
-      "from": "n1e9i",
-      "to": "n1i0j",
+      "id": "l1jkt",
+      "from": "n1ejr",
+      "to": "n1icm",
       "channelMode": "set",
       "channels": [
         {
@@ -589,9 +601,9 @@
       "weight": 1
     },
     {
-      "id": "l1lee",
-      "from": "n1e9i",
-      "to": "n1kdw",
+      "id": "l1l3q",
+      "from": "n1ejr",
+      "to": "n1kmk",
       "channelMode": "set",
       "channels": [
         {
@@ -609,9 +621,9 @@
       "weight": 1
     },
     {
-      "id": "l1n72",
-      "from": "n1e9i",
-      "to": "n1mxp",
+      "id": "l1nfv",
+      "from": "n1ejr",
+      "to": "n1my1",
       "channelMode": "set",
       "channels": [
         {
@@ -629,9 +641,9 @@
       "weight": 1
     },
     {
-      "id": "l1pyz",
-      "from": "n1e9i",
-      "to": "n1oxp",
+      "id": "l1pqw",
+      "from": "n1ejr",
+      "to": "n1oxk",
       "channelMode": "set",
       "channels": [
         {
@@ -649,9 +661,9 @@
       "weight": 1
     },
     {
-      "id": "l1r2p",
-      "from": "n1e9i",
-      "to": "n1qwn",
+      "id": "l1rbo",
+      "from": "n1ejr",
+      "to": "n1qms",
       "channelMode": "set",
       "channels": [
         {
@@ -669,9 +681,9 @@
       "weight": 1
     },
     {
-      "id": "l1uyy",
-      "from": "n1slk",
-      "to": "n1tvg",
+      "id": "l1ugr",
+      "from": "n1szc",
+      "to": "n1tze",
       "channelMode": "inherit",
       "channels": [
         {
@@ -689,9 +701,9 @@
       "weight": 1
     },
     {
-      "id": "l1wko",
-      "from": "n1tvg",
-      "to": "n1vob",
+      "id": "l1wt4",
+      "from": "n1tze",
+      "to": "n1vlh",
       "channelMode": "set",
       "channels": [
         {
@@ -709,9 +721,9 @@
       "weight": 1
     },
     {
-      "id": "l1y0t",
-      "from": "n1tvg",
-      "to": "n1xm3",
+      "id": "l1y4t",
+      "from": "n1tze",
+      "to": "n1x9w",
       "channelMode": "set",
       "channels": [
         {
@@ -729,9 +741,9 @@
       "weight": 1
     },
     {
-      "id": "l212l",
-      "from": "n1zdg",
-      "to": "n2048",
+      "id": "l219h",
+      "from": "n1z01",
+      "to": "n20u9",
       "channelMode": "inherit",
       "channels": [
         {
@@ -749,9 +761,9 @@
       "weight": 1
     },
     {
-      "id": "l233t",
-      "from": "n2048",
-      "to": "n22vx",
+      "id": "l23xt",
+      "from": "n20u9",
+      "to": "n22kh",
       "channelMode": "set",
       "channels": [
         {
@@ -769,9 +781,9 @@
       "weight": 1
     },
     {
-      "id": "l257u",
-      "from": "n2048",
-      "to": "n247a",
+      "id": "l2517",
+      "from": "n20u9",
+      "to": "n24v4",
       "channelMode": "set",
       "channels": [
         {
@@ -789,9 +801,9 @@
       "weight": 1
     },
     {
-      "id": "l27fb",
-      "from": "n2048",
-      "to": "n26km",
+      "id": "l27je",
+      "from": "n20u9",
+      "to": "n26ni",
       "channelMode": "set",
       "channels": [
         {

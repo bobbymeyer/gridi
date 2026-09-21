@@ -4,7 +4,7 @@
 // that has to arrive N sixteenths late has to be drawn N cells of line away.
 // These turn a musical offset into a column and a row.
 
-import { createNode, addNode, connect, createChannel } from '../src/model.js';
+import { createNode, addNode, connect, createChannel, setSound } from '../src/model.js';
 import { lineCells } from '../src/geometry.js';
 
 export const NODE_W = 6; // cells; a node is this wide, and the line starts at its right edge
@@ -111,4 +111,27 @@ export const KIT = {
   kick: 36, rim: 37, snare: 38, clap: 39, lowTom: 41, closedHat: 42,
   pedalHat: 44, openHat: 46, crash: 49, ride: 51, tambourine: 54,
   cowbell: 56, highAgogo: 67, lowAgogo: 68, shaker: 82,
+};
+
+/** What each channel of a patch should be playing, as General MIDI programs. */
+export function sounds(patch, byChannel, out = 'A') {
+  for (const [ch, program] of Object.entries(byChannel)) setSound(patch, out, Number(ch), program);
+  return patch;
+}
+
+/** The General MIDI programs the library patches ask for, by name not number. */
+export const GM = {
+  rhodes: 4,
+  vibraphone: 11,
+  nylonGuitar: 24,
+  jazzGuitar: 26,
+  acousticBass: 32,
+  fingeredBass: 33,
+  synthBass: 38,
+  strings: 48,
+  flute: 73,
+  sawLead: 81,
+  warmPad: 89,
+  standardKit: 0,
+  electronicKit: 24,
 };

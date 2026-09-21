@@ -12,7 +12,7 @@
 // a part's cycle that leaves room to draw it.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, channel } from './lib.mjs';
+import { downstream, channel, sounds, GM } from './lib.mjs';
 
 const BAR = 16; // cells, at a sixteenth a cell
 
@@ -121,5 +121,6 @@ export function bossaPatch() {
     });
   });
 
-  return p;
+  // Nylon guitar and upright bass, with a flute on the top line.
+  return sounds(p, { 2: GM.acousticBass, 3: GM.nylonGuitar, 4: GM.flute });
 }

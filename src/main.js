@@ -8,8 +8,9 @@ import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
 import {
   createPatch, createNode, addNode, removeNode, removeLine, connect, canConnect,
-  demoPatch, serialize, deserialize, readPatch, nodeById,
+  demoPatch, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
+import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
 import { typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES, noteName, resolveDegree } from './music.js';
 import { euclid, patternString, GRID_KEYS } from './rhythm.js';
@@ -747,10 +748,21 @@ function closeSheet() {
   $('sheet').hidden = true;
 }
 
-async function showLibrary() {
-  const list = $('sheet-list');
-  list.textContent = '';
-  $('sheet').hidden = false;
+/** Open the panel on one thing, or close it if that thing is already up. */
+function toggleSheet(title, fill) {
+  const sheet = $('sheet');
+  if (!sheet.hidden && sheet.dataset.showing === title) {
+    closeSheet();
+    return;
+  }
+  sheet.dataset.showing = title;
+  $('sheet-title').textContent = title;
+  $('sheet-list').textContent = '';
+  sheet.hidden = false;
+  fill($('sheet-list'));
+}
+
+async function showLibrary(list) {
   try {
     const entries = await loadLibrary();
     if (!entries.length) {
@@ -785,10 +797,74 @@ async function showLibrary() {
   }
 }
 
-$('library').addEventListener('click', () => {
-  if ($('sheet').hidden) showLibrary();
-  else closeSheet();
-});
+$('library').addEventListener('click', () => toggleSheet('library', showLibrary));
+
+/* ----------------------------------------------------------------- sounds */
+
+/**
+ * What each channel of this patch should be playing.
+ *
+ * The rows are the channels the patch actually plays on, worked out from the
+ * graph, so there is never a row for a channel nothing reaches. Choosing a
+ * sound writes a program number into the patch; the transport sends it on the
+ * way in, and anything receiving is on the right sound before the first note.
+ */
+function showSounds(list) {
+  const channels = usedChannels(state.patch);
+  if (!channels.length) {
+    list.append(Object.assign(document.createElement('p'), {
+      className: 'sheet__note',
+      textContent: 'Nothing is playing yet. Patch a Note node up and its channel appears here.',
+    }));
+    return;
+  }
+
+  for (const { out, ch } of channels) {
+    const row = document.createElement('div');
+    row.className = 'sheet__row';
+    row.append(Object.assign(document.createElement('span'), {
+      textContent: ch === DRUM_CHANNEL ? `${out} · ch ${ch} · drums` : `${out} · ch ${ch}`,
+    }));
+
+    const pick = document.createElement('select');
+    pick.className = 'field';
+    pick.setAttribute('aria-label', `Sound for output ${out} channel ${ch}`);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = '— leave as it is —';
+    pick.append(none);
+    for (const { value, label } of programsFor(ch)) {
+      const opt = document.createElement('option');
+      opt.value = String(value);
+      opt.textContent = `${String(value).padStart(3, ' ')}  ${label}`;
+      pick.append(opt);
+    }
+    const current = soundFor(state.patch, out, ch);
+    pick.value = current === null ? '' : String(current);
+    pick.addEventListener('change', () => {
+      const program = pick.value === '' ? null : Number(pick.value);
+      setSound(state.patch, out, ch, program);
+      save();
+      if (program === null) {
+        setStatus(`${out} channel ${ch} is left on whatever the device has.`, 'Sound.');
+        return;
+      }
+      // Send it now as well as at the next start, so the change is audible
+      // while you are choosing rather than only after pressing play.
+      midi.sendProgram({ slot: out, channel: ch, program, at: audio.now() });
+      setStatus(`${out} channel ${ch} is ${programName(program, ch)}.`, 'Sound.');
+    });
+    row.append(pick);
+    list.append(row);
+  }
+
+  list.append(Object.assign(document.createElement('p'), {
+    className: 'sheet__note',
+    textContent: 'General MIDI program numbers, sent when the transport starts.',
+  }));
+}
+
+$('sounds').addEventListener('click', () => toggleSheet('sounds', showSounds));
 $('sheet-close').addEventListener('click', closeSheet);
 
 /*

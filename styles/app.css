@@ -545,6 +545,19 @@ input[type="checkbox"]:checked::after {
 
 .sheet__note { padding: 10px 12px; font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
 
+.sheet__row {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--grid-module);
+}
+
+.sheet__row:last-child { border-bottom: 0; }
+.sheet__row > span { font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
+.sheet__row select { width: 100%; }
+
 .sheet[hidden] { display: none; }
 
 /* Inspector ---------------------------------------------------------------- */
