@@ -851,11 +851,46 @@ async function useSoundfontFile(bytes, name, { keep = true } = {}) {
   return font;
 }
 
-/** The font from last time, if there was one. */
-async function recallFont() {
+/**
+ * The bundled font, as `soundfont/index.json` describes it. Read once.
+ */
+let bundled = null;
+async function bundledFont() {
+  if (bundled) return bundled;
+  const res = await fetch('soundfont/index.json');
+  if (!res.ok) throw new Error(`soundfont index ${res.status}`);
+  bundled = await res.json();
+  return bundled;
+}
+
+/**
+ * The font to start with: the one dropped in last time, or the one that ships.
+ *
+ * Nothing waits on this. A patch is playable before the font arrives and
+ * better afterwards, and a browser caches thirty megabytes perfectly well, so
+ * the cost is paid once.
+ */
+async function startingFont() {
   const held = await recallSoundfont();
-  if (!held) return;
-  await useSoundfontFile(held.bytes, held.name, { keep: false });
+  if (held) {
+    await useSoundfontFile(held.bytes, held.name, { keep: false });
+    return;
+  }
+  try {
+    const entry = await bundledFont();
+    setStatus(`Loading ${entry.name}…`, 'SoundFont.');
+    const res = await fetch(`soundfont/${entry.file}`);
+    if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
+    // Not kept in storage: it is on disk beside the app already, and putting a
+    // second copy in the browser's quota would only crowd out a font someone
+    // actually chose.
+    const font = await useSoundfontFile(await res.arrayBuffer(), entry.file, { keep: false });
+    if (font) {
+      setStatus(`${entry.name} by ${entry.author}, ${describe(font)}. Ready.`, 'SoundFont.');
+    }
+  } catch {
+    setStatus('No SoundFont. Drop a .sf2 on the canvas to hear these sounds.', '');
+  }
 }
 
 /* ----------------------------------------------------------------- sounds */
@@ -873,7 +908,21 @@ function showSounds(list) {
   const banner = document.createElement('p');
   banner.className = 'sheet__note';
   if (font) {
-    banner.textContent = `Playing through ${font.label}, ${describe(font)}. `;
+    banner.textContent = `Playing through ${font.label}, ${describe(font)}.`;
+    // Whose work this is, where the sound is chosen. The bundled font is
+    // somebody's years of recording; a line of credit is the least of it.
+    if (bundled && font.label.startsWith(bundled.name)) {
+      banner.append(document.createElement('br'));
+      banner.append(`by ${bundled.author} — `);
+      const link = document.createElement('a');
+      link.href = bundled.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = bundled.url.replace(/^https?:\/\//, '');
+      banner.append(link, ' ');
+    } else {
+      banner.append(' ');
+    }
     const drop = document.createElement('button');
     drop.className = 'sheet__link';
     drop.textContent = 'forget it';
@@ -1327,7 +1376,7 @@ function boot() {
   populateKeySelects();
   // The font from last time, if there was one. Nothing waits on it: a patch is
   // playable before it arrives, and louder afterwards.
-  recallFont();
+  startingFont();
   showEnvironmentWarning();
   buildSlotPicker();
   syncMidi();

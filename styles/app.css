@@ -558,6 +558,8 @@ input[type="checkbox"]:checked::after {
 .sheet__row > span { font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
 .sheet__row select { width: 100%; }
 
+.sheet__note a { color: var(--ink); }
+
 .sheet__link {
   border: 0;
   padding: 0;

@@ -16,10 +16,12 @@ const font = (zones, presetZones = [[gen(GEN.instrument, 0)]], sample = {}) => p
   presetZones,
 }));
 
-const planFor = (f, key = 60, vel = 100) => {
+// Full velocity, where the default modulators add nothing, so a plan shows the
+// zone's own numbers. Velocity has its own tests.
+const planFor = (f, key = 60, vel = 127) => {
   const voices = voicesFor(f, realPresets(f)[0], key, vel);
   assert.ok(voices.length, 'the fixture sounds on this key');
-  return voicePlan(voices[0], key, vel);
+  return voicePlan(voices[0], key);
 };
 
 /* ----------------------------------------------------------------- pitch */
@@ -78,18 +80,36 @@ test('address offsets move the window, coarse ones by thirty-two thousand', () =
 
 /* -------------------------------------------------------------- loudness */
 
-test('attenuation and velocity both quieten a voice', () => {
+test('a zone attenuation is read straight off, at full velocity', () => {
   const quiet = planFor(font([[gen(GEN.initialAttenuation, 200), gen(GEN.sampleID, 0)]]), 60, 127);
-  assert.ok(Math.abs(quiet.gain - 0.1) < 1e-6, '20dB down at full velocity');
-  const soft = planFor(font([[gen(GEN.sampleID, 0)]]), 60, 64);
-  assert.ok(soft.gain > 0.2 && soft.gain < 0.3, `half velocity is a quarter the gain, got ${soft.gain}`);
+  assert.ok(Math.abs(quiet.gain - 0.1) < 1e-6, '20dB down');
+});
+
+test('velocity quietens a voice, through the font rather than around it', () => {
+  const f = font([[gen(GEN.sampleID, 0)]]);
+  const full = planFor(f, 60, 127).gain;
+  const half = planFor(f, 60, 64).gain;
+  const soft = planFor(f, 60, 20).gain;
+  assert.ok(Math.abs(full - 1) < 1e-9, 'nothing taken off at the top');
+  // Six decibels at halfway, which is the default routing's doing, not a
+  // curve applied here: the gain is whatever the attenuation came to.
+  assert.ok(Math.abs(half - 0.5) < 0.02, `about half the amplitude, got ${half}`);
+  assert.ok(soft < half && soft > 0, 'and quieter still further down');
+});
+
+test('velocity is counted once, not once here and once in the font', () => {
+  const f = font([[gen(GEN.sampleID, 0)]]);
+  const plan = planFor(f, 60, 64);
+  // If a velocity curve were applied on top of the modulator, half velocity
+  // would land near a quarter of the amplitude rather than a half.
+  assert.ok(plan.gain > 0.4, `got ${plan.gain}, which looks like velocity twice`);
 });
 
 test('gain never leaves the range a gain node can use', () => {
   for (const cb of [-1000, 0, 500, 1440, 9000]) {
     for (const vel of [1, 64, 127]) {
       const g = planFor(font([[gen(GEN.initialAttenuation, cb), gen(GEN.sampleID, 0)]]), 60, vel).gain;
-      assert.ok(Number.isFinite(g) && g >= 0, `${cb}cb at velocity ${vel} gave ${g}`);
+      assert.ok(Number.isFinite(g) && g >= 0 && g <= 1, `${cb}cb at velocity ${vel} gave ${g}`);
     }
   }
 });

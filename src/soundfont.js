@@ -22,12 +22,14 @@ const MIN_ENVELOPE = 0.001;
 /**
  * Everything needed to play one sample of one note, in seconds, Hz and ratios.
  *
+ * Velocity is not an argument: it went in at `voicesFor`, where the font's own
+ * modulators decide what it does. By here it is already in the numbers.
+ *
  * @param {object} voice  one entry from `voicesFor`
  * @param {number} key  the note being played
- * @param {number} velocity  1-127
  * @returns {object}
  */
-export function voicePlan(voice, key, velocity) {
+export function voicePlan(voice, key) {
   const { header, gens } = voice;
   const at = (id) => (typeof gens[id] === 'number' ? gens[id] : 0);
 
@@ -48,7 +50,11 @@ export function voicePlan(voice, key, velocity) {
     + at(GEN.fineTune)
     + header.correction;
 
-  const attenuation = centibelsToGain(at(GEN.initialAttenuation));
+  // Attenuation already carries the velocity: the default velocity-to-loudness
+  // modulator has added its share by the time a plan is made. Applying a
+  // velocity curve here as well would count it twice, which is what this did
+  // before the modulators were read.
+  const attenuation = centibelsToGain(clamp(at(GEN.initialAttenuation), 0, 1440));
   const sustain = centibelsToGain(clamp(at(GEN.sustainVolEnv), 0, 1440));
 
   return {
@@ -57,9 +63,7 @@ export function voicePlan(voice, key, velocity) {
     end: Math.max(end, start + 1),
     sampleRate: header.sampleRate || 44100,
     detune,
-    // Velocity is not in the file's gift: the spec leaves it to the player, and
-    // squaring it is the curve that feels right on a keyboard.
-    gain: attenuation * (clamp(velocity, 1, 127) / 127) ** 2,
+    gain: attenuation,
     loop: (at(GEN.sampleModes) & 1) === 1,
     loopStart: Math.max(loopStart - start, 0),
     loopEnd: Math.max(loopEnd - start, 1),
@@ -176,7 +180,7 @@ export class SoundFont {
   plansFor(bank, program, key, velocity) {
     const preset = presetFor(this.font, bank, program);
     if (!preset) return [];
-    return voicesFor(this.font, preset, key, velocity).map((v) => voicePlan(v, key, velocity));
+    return voicesFor(this.font, preset, key, velocity).map((v) => voicePlan(v, key));
   }
 
   /**

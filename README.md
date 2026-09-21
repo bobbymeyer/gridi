@@ -223,23 +223,36 @@ node tools/build.mjs
 
 ## soundfont
 
-Drop a `.sf2` anywhere on the canvas and Gridi plays through it. The channel
-programs above pick the presets, so what Gridi plays to itself is the
-instrument it is asking a module for.
+Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and loads it
+on first run. 261 instruments and 13 drum kits in 32MB.
+
+<https://www.schristiancollins.com/generaluser>
+
+His licence is in `soundfont/LICENSE.txt`, unaltered. It permits use in
+software projects and redistribution, and asks that nobody link directly to his
+download files — which is why the copy is in this repository rather than
+fetched from his site. If you get use out of it,
+[buy him a coffee](https://buymeacoffee.com/schristiancollins).
+
+Drop any other `.sf2` on the canvas to play through that instead.
 
 | | |
 | --- | --- |
 | Format | SoundFont 2. Compressed `.sf3` is not read |
-| Kept | In IndexedDB, so it survives a reload. Drop a new one to replace it |
-| Dropping it | **forget it**, in the Sounds panel |
-| Channel 10 | Looked up in bank 128, which is where a General MIDI font keeps its kits |
+| A dropped font | Kept in IndexedDB, so it survives a reload. **forget it**, in the Sounds panel, goes back to the bundled one |
+| Channel 10 | Looked up in bank 128, where a General MIDI font keeps its kits |
+| Modulators | Velocity and key number, over the two default routings. A font's own replace a default that reads and writes the same things |
+| Not read | Modulators sourced from the wheel, the pedals, aftertouch or the bender, since none of them reach the internal player. Reverb and chorus sends, which Gridi has nowhere to put |
 
-Without one, Note nodes audition through a single triangle oscillator. That is
-a click track for building a patch, not an instrument.
+Velocity goes through the font rather than around it: it reaches loudness and
+filter cutoff by the routings the font carries, so an instrument gets darker as
+well as quieter as you play softer.
 
 Samples are decoded when a preset is first played and kept after, so a
-hundred-megabyte General MIDI font costs the file plus the few sounds a patch
-uses.
+thirty-megabyte font costs the file plus the few sounds a patch uses.
+
+With no font at all, Note nodes audition through a single triangle oscillator.
+That is a click track for building a patch, not an instrument.
 
 ## sounds
 
@@ -277,7 +290,7 @@ rail; **Save** names the file after it.
 | To open one | How |
 | --- | --- |
 | A file | Drop it anywhere on the canvas, or press **Open** |
-| A SoundFont | Drop the `.sf2` on the canvas too |
+| A SoundFont | Drop the `.sf2` on the canvas too, replacing the bundled one |
 | Its text | Paste it onto the canvas |
 
 Opening replaces the canvas and goes on the undo stack. ⌘Z puts back what was
@@ -421,7 +434,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 302 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 320 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
