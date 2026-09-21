@@ -238,11 +238,12 @@ Drop any other `.sf2` on the canvas to play through that instead.
 
 | | |
 | --- | --- |
-| Format | SoundFont 2. Compressed `.sf3` is not read |
+| Format | SoundFont 2, sixteen or twenty-four bit. Compressed `.sf3` is not read |
+| Stereo | A zone naming one half of a pair plays both, placed left and right. A font that names both itself keeps its own panning |
 | A dropped font | Kept in IndexedDB, so it survives a reload. **forget it**, in the Sounds panel, goes back to the bundled one |
 | Channel 10 | Looked up in bank 128, where a General MIDI font keeps its kits |
 | Modulators | Velocity and key number, over the two default routings. A font's own replace a default that reads and writes the same things |
-| Not read | Modulators sourced from the wheel, the pedals, aftertouch or the bender, since none of them reach the internal player. Reverb and chorus sends, which Gridi has nowhere to put |
+| Not read | Modulators sourced from the wheel, the pedals, aftertouch or the bender, since none of them reach the internal player. Reverb and chorus sends, which Gridi has nowhere to put. Samples that live in a synthesiser's ROM, which a file holds the header of and none of the sound |
 
 Velocity goes through the font rather than around it: it reaches loudness and
 filter cutoff by the routings the font carries, so an instrument gets darker as
@@ -434,7 +435,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 320 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 335 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
