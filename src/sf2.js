@@ -14,6 +14,26 @@
 // The one rule that catches everyone: generators on an instrument zone are the
 // value, and generators on a preset zone are added to it.
 
+/**
+ * What a sample header says it is.
+ *
+ * A stereo recording is stored as two mono samples that name each other. Well
+ * made fonts give each one its own zone and pan them apart; where a font names
+ * only one half, the other is found through the link rather than dropped.
+ *
+ * `rom` marks a sample that lives in a hardware synthesiser's own memory. The
+ * file holds its header and not a byte of its sound, so there is nothing to play.
+ */
+export const SAMPLE = { mono: 1, right: 2, left: 4, linked: 8, rom: 0x8000 };
+
+export const isRom = (type) => (type & SAMPLE.rom) !== 0;
+export const sideOf = (type) => {
+  const kind = type & ~SAMPLE.rom;
+  if (kind === SAMPLE.left) return -1;
+  if (kind === SAMPLE.right) return 1;
+  return 0;
+};
+
 /** Generator numbers worth naming. The rest are read but not acted on. */
 export const GEN = {
   startAddrsOffset: 0,
@@ -131,6 +151,7 @@ export function parseSf2(buffer) {
 
   const found = {};
   let samples = null;
+  let low = null;
   let info = {};
   for (const list of chunks(view, 12, end)) {
     if (list.tag !== 'LIST') continue;
@@ -146,6 +167,11 @@ export function parseSf2(buffer) {
         samples = chunk.at % 2 === 0
           ? new Int16Array(buffer, chunk.at, frames)
           : new Int16Array(new Uint8Array(buffer, chunk.at, frames * 2).slice().buffer);
+      } else if (kind === 'sdta' && chunk.tag === 'sm24') {
+        // The bottom eight bits of a twenty-four bit sample, one byte each,
+        // in a chunk beside the sixteen-bit one rather than interleaved -- so
+        // a player that has never heard of it reads the file and sounds right.
+        low = new Uint8Array(buffer, chunk.at, chunk.size);
       } else if (kind === 'pdta') {
         found[chunk.tag] = chunk;
       } else if (kind === 'INFO' && (chunk.tag === 'INAM' || chunk.tag === 'isng')) {
@@ -167,9 +193,13 @@ export function parseSf2(buffer) {
     transform: v.getUint16(at + 8, true),
   });
 
+  const frames = samples?.length ?? 0;
   return {
     name: info.INAM || '',
     samples: samples ?? new Int16Array(0),
+    // One byte per frame or it is not the thing it claims to be, and a file
+    // that says otherwise is better read as plain sixteen bit than as noise.
+    samplesLow: low && low.length >= frames ? low : null,
     presets: table(view, found.phdr, RECORD.phdr, (v, at) => ({
       name: name(v, at),
       program: v.getUint16(at + 20, true),
@@ -318,10 +348,46 @@ export function voicesFor(font, preset, key, velocity, controllers = null) {
 
       const header = font.headers[gens[GEN.sampleID]];
       if (!header || header.end <= header.start) continue;
+      // A sample that lives in a synthesiser's ROM has a header here and no
+      // sound anywhere. Playing the bytes that happen to sit at its offsets
+      // would be somebody else's instrument, or noise.
+      if (isRom(header.type)) continue;
       out.push({ header, gens, sampleIndex: gens[GEN.sampleID] });
     }
   }
-  return out;
+  return withStereoPartners(font, out);
+}
+
+/**
+ * Bring in the other half of any stereo sample that was left behind.
+ *
+ * A font that does stereo properly gives each side its own zone, and both are
+ * already here -- in which case this adds nothing. Where only one side is
+ * named, its partner is found through the link and played alongside it, and
+ * the two are placed left and right by what they say they are. A pan the font
+ * set itself is left alone; only a pair assembled here is positioned here.
+ */
+function withStereoPartners(font, voices) {
+  const named = new Set(voices.map((v) => v.sampleIndex));
+  const extra = [];
+  for (const voice of voices) {
+    const side = sideOf(voice.header.type);
+    if (side === 0) continue;
+    const partnerIndex = voice.header.link;
+    const partner = font.headers[partnerIndex];
+    if (!partner || partnerIndex === voice.sampleIndex) continue;
+    if (named.has(partnerIndex) || isRom(partner.type)) continue;
+    if (partner.end <= partner.start) continue;
+
+    named.add(partnerIndex);
+    voice.gens[GEN.pan] = side * 500;
+    extra.push({
+      header: partner,
+      sampleIndex: partnerIndex,
+      gens: { ...voice.gens, [GEN.sampleID]: partnerIndex, [GEN.pan]: (sideOf(partner.type) || -side) * 500 },
+    });
+  }
+  return extra.length ? [...voices, ...extra] : voices;
 }
 
 /**

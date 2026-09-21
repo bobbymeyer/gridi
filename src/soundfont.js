@@ -195,12 +195,22 @@ export class SoundFont {
     if (held) return held;
 
     const source = this.font.samples;
+    const low = this.font.samplesLow;
     const from = clamp(plan.start, 0, source.length);
     const to = clamp(plan.end, from, source.length);
     const length = Math.max(to - from, 1);
     const buffer = ctx.createBuffer(1, length, plan.sampleRate);
     const out = buffer.getChannelData(0);
-    for (let i = 0; i < length; i += 1) out[i] = source[from + i] / 32768;
+    if (low) {
+      // Twenty-four bit: the high two bytes from one chunk, the low one from
+      // another. Shifting the signed high word up and dropping the low byte in
+      // gives the whole signed value, and 2^23 is what makes it fit in -1..1.
+      for (let i = 0; i < length; i += 1) {
+        out[i] = ((source[from + i] << 8) | low[from + i]) / 8388608;
+      }
+    } else {
+      for (let i = 0; i < length; i += 1) out[i] = source[from + i] / 32768;
+    }
 
     this.buffers.set(key, buffer);
     return buffer;

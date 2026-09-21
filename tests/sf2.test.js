@@ -6,7 +6,7 @@ import {
   parseSf2, voicesFor, presetFor, realPresets, GEN, DEFAULTS,
   timecentsToSeconds, centibelsToGain, centsToHz,
   readSource, shape, modulatorValue, stackModulators, applyModulators,
-  DEFAULT_MODULATORS, SOURCE,
+  DEFAULT_MODULATORS, SOURCE, SAMPLE, isRom, sideOf,
 } from '../src/sf2.js';
 import { buildSf2, gen } from './sf2-fixture.js';
 
@@ -351,4 +351,130 @@ test('velocity reaches loudness and cutoff on a font that says nothing about it'
   const soft = voicesFor(plain, preset, 60, 40)[0].gens;
   assert.ok(soft[GEN.initialAttenuation] > loud[GEN.initialAttenuation], 'softer is quieter');
   assert.ok(soft[GEN.initialFilterFc] < loud[GEN.initialFilterFc], 'and darker');
+});
+
+/* ----------------------------------------------------------- stereo and rom */
+
+/** A font whose one instrument zone names `sampleID`, over a set of headers. */
+const withSamples = (samples, sampleID = 0, extraZones = []) => parseSf2(buildSf2({
+  pcm: Array.from({ length: 40 }, (_, i) => i * 100),
+  samples,
+  instrumentZones: [[gen(GEN.sampleID, sampleID)], ...extraZones],
+  presetZones: [[gen(GEN.instrument, 0)]],
+}));
+
+const L = { name: 'pad-L', type: SAMPLE.left, link: 1 };
+const R = { name: 'pad-R', type: SAMPLE.right, link: 0 };
+
+test('a sample header says which side of a pair it is', () => {
+  assert.equal(sideOf(SAMPLE.left), -1);
+  assert.equal(sideOf(SAMPLE.right), 1);
+  assert.equal(sideOf(SAMPLE.mono), 0);
+  assert.equal(sideOf(SAMPLE.linked), 0, 'more than two channels is not a side');
+  assert.equal(sideOf(SAMPLE.left | SAMPLE.rom), -1, 'a ROM sample still has a side');
+  assert.ok(isRom(SAMPLE.mono | SAMPLE.rom));
+  assert.ok(!isRom(SAMPLE.mono));
+});
+
+test('a zone naming one half of a stereo sample plays both halves', () => {
+  const font = withSamples([L, R], 0);
+  const voices = voicesFor(font, realPresets(font)[0], 60, LOUD);
+  assert.equal(voices.length, 2, 'the partner came along');
+  assert.deepEqual(voices.map((v) => v.header.name), ['pad-L', 'pad-R']);
+  assert.deepEqual(voices.map((v) => v.gens[GEN.pan]), [-500, 500], 'and they are placed apart');
+});
+
+test('it works from either side of the pair', () => {
+  const font = withSamples([L, R], 1);
+  const voices = voicesFor(font, realPresets(font)[0], 60, LOUD);
+  assert.deepEqual(voices.map((v) => v.header.name), ['pad-R', 'pad-L']);
+  assert.deepEqual(voices.map((v) => v.gens[GEN.pan]), [500, -500]);
+});
+
+test('a font that names both halves itself is left exactly as it is', () => {
+  const font = parseSf2(buildSf2({
+    pcm: Array.from({ length: 40 }, (_, i) => i * 100),
+    samples: [L, R],
+    instrumentZones: [
+      [gen(GEN.pan, -250), gen(GEN.sampleID, 0)],
+      [gen(GEN.pan, 250), gen(GEN.sampleID, 1)],
+    ],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const voices = voicesFor(font, realPresets(font)[0], 60, LOUD);
+  assert.equal(voices.length, 2, 'no third voice invented');
+  assert.deepEqual(voices.map((v) => v.gens[GEN.pan]), [-250, 250], 'and its own panning kept');
+});
+
+test('the partner inherits the zone, so it is tuned and shaped the same', () => {
+  const font = parseSf2(buildSf2({
+    pcm: Array.from({ length: 40 }, (_, i) => i * 100),
+    samples: [L, R],
+    instrumentZones: [[
+      gen(GEN.coarseTune, 5),
+      gen(GEN.attackVolEnv, -2000),
+      gen(GEN.sampleModes, 1),
+      gen(GEN.sampleID, 0),
+    ]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const [left, right] = voicesFor(font, realPresets(font)[0], 60, LOUD);
+  for (const id of [GEN.coarseTune, GEN.attackVolEnv, GEN.sampleModes]) {
+    assert.equal(right.gens[id], left.gens[id], `generator ${id} carried over`);
+  }
+  assert.equal(right.gens[GEN.sampleID], 1, 'but pointed at the other sample');
+});
+
+test('a mono sample is never given a partner', () => {
+  const font = withSamples([{ name: 'solo', type: SAMPLE.mono, link: 1 }, R], 0);
+  assert.equal(voicesFor(font, realPresets(font)[0], 60, LOUD).length, 1);
+});
+
+test('a link that goes nowhere is ignored rather than followed', () => {
+  for (const link of [99, 0]) {
+    const font = withSamples([{ name: 'half', type: SAMPLE.left, link }], 0);
+    const voices = voicesFor(font, realPresets(font)[0], 60, LOUD);
+    assert.equal(voices.length, 1, `link ${link} should not add a voice`);
+  }
+});
+
+test('a ROM sample is not played, because the file does not contain it', () => {
+  const font = withSamples([{ name: 'in-rom', type: SAMPLE.mono | SAMPLE.rom }], 0);
+  assert.deepEqual(voicesFor(font, realPresets(font)[0], 60, LOUD), []);
+});
+
+test('a stereo half whose partner is in ROM is played alone', () => {
+  const font = withSamples([
+    { name: 'here-L', type: SAMPLE.left, link: 1 },
+    { name: 'gone-R', type: SAMPLE.right | SAMPLE.rom, link: 0 },
+  ], 0);
+  const voices = voicesFor(font, realPresets(font)[0], 60, LOUD);
+  assert.equal(voices.length, 1);
+  assert.equal(voices[0].header.name, 'here-L');
+});
+
+/* ------------------------------------------------------------ twenty-four bit */
+
+test('a file with no sm24 chunk reports none, and one with it reports it', () => {
+  const plain = parseSf2(buildSf2({ pcm: [1, 2, 3], instrumentZones: [[gen(GEN.sampleID, 0)]], presetZones: [[gen(GEN.instrument, 0)]] }));
+  assert.equal(plain.samplesLow, null);
+
+  const deep = parseSf2(buildSf2({
+    pcm: [1, 2, 3],
+    pcmLow: [10, 20, 30],
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  assert.ok(deep.samplesLow, 'the low bytes are there');
+  assert.equal(deep.samplesLow[1], 20);
+});
+
+test('a short sm24 chunk is refused rather than read past its end', () => {
+  const broken = parseSf2(buildSf2({
+    pcm: [1, 2, 3, 4, 5, 6],
+    pcmLow: [1, 2], // one byte per frame is the deal, and this is not that
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  assert.equal(broken.samplesLow, null, 'read as plain sixteen bit instead');
 });

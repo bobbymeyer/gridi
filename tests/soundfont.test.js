@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSf2, voicesFor, realPresets, GEN } from '../src/sf2.js';
+import { parseSf2, voicesFor, realPresets, GEN, SAMPLE } from '../src/sf2.js';
 import { voicePlan, envelopePoints, planEnd, SoundFont } from '../src/soundfont.js';
 import { buildSf2, gen } from './sf2-fixture.js';
 
@@ -216,4 +216,91 @@ test('the same sample is only ever built into one buffer', () => {
   assert.ok(Math.abs(a.getChannelData(0)[10] - 1000 / 32768) < 1e-6, 'scaled to -1..1');
   sf.release();
   assert.equal(sf.buffers.size, 0);
+});
+
+/* ------------------------------------------------------- twenty-four bit */
+
+/** Somewhere to put floats, which is all the buffer builder needs. */
+const fakeCtx = () => ({
+  createBuffer(channels, length, sampleRate) {
+    const data = new Float32Array(length);
+    return { length, sampleRate, getChannelData: () => data };
+  },
+});
+
+test('sixteen bit samples land between minus one and one', () => {
+  const sf = new SoundFont(buildSf2({
+    pcm: [0, 32767, -32768, 16384],
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const plan = sf.plansFor(0, 0, 60, 127)[0];
+  const d = sf.bufferFor(fakeCtx(), plan).getChannelData(0);
+  assert.equal(d[0], 0);
+  assert.ok(Math.abs(d[1] - 32767 / 32768) < 1e-7, 'the top of the range');
+  assert.equal(d[2], -1, 'and the bottom');
+  assert.ok(Math.abs(d[3] - 0.5) < 1e-7);
+});
+
+test('a twenty-four bit sample is the two chunks put back together', () => {
+  const sf = new SoundFont(buildSf2({
+    //          high word        low byte    means
+    pcm:    [0,        1,      -1,    32767, -32768],
+    pcmLow: [0,      128,     255,      255,      0],
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const plan = sf.plansFor(0, 0, 60, 127)[0];
+  const d = sf.bufferFor(fakeCtx(), plan).getChannelData(0);
+  const SCALE = 8388608; // two to the twenty-third
+  assert.equal(d[0], 0, 'nothing is nothing');
+  assert.ok(Math.abs(d[1] - 384 / SCALE) < 1e-9, 'high 1, low 128 is 384');
+  assert.ok(Math.abs(d[2] - -1 / SCALE) < 1e-9, 'high -1, low 255 is -1');
+  assert.ok(Math.abs(d[3] - 8388607 / SCALE) < 1e-9, 'the very top');
+  assert.equal(d[4], -1, 'and the very bottom');
+});
+
+test('the extra byte is resolution, not a different sound', () => {
+  const frames = 64;
+  const pcm = Array.from({ length: frames }, (_, i) => Math.round(Math.sin(i / 5) * 20000));
+  const plain = new SoundFont(buildSf2({
+    pcm,
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const deep = new SoundFont(buildSf2({
+    pcm,
+    pcmLow: Array.from({ length: frames }, () => 128),
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const a = plain.bufferFor(fakeCtx(), plain.plansFor(0, 0, 60, 127)[0]).getChannelData(0);
+  const b = deep.bufferFor(fakeCtx(), deep.plansFor(0, 0, 60, 127)[0]).getChannelData(0);
+  let worst = 0;
+  for (let i = 0; i < frames; i += 1) worst = Math.max(worst, Math.abs(a[i] - b[i]));
+  // Half a sixteen-bit step apart, everywhere. Any more and the two chunks
+  // have been put together wrongly rather than at finer resolution.
+  assert.ok(worst < 1 / 32768, `the same waveform, got ${worst} apart`);
+  assert.ok(worst > 0, 'but not identical, because the extra byte is doing something');
+});
+
+test('a stereo pair becomes two buffers, one for each side', () => {
+  const sf = new SoundFont(buildSf2({
+    pcm: Array.from({ length: 30 }, (_, i) => i * 500),
+    samples: [
+      { name: 'wide-L', type: SAMPLE.left, link: 1, start: 0, end: 15 },
+      { name: 'wide-R', type: SAMPLE.right, link: 0, start: 15, end: 30 },
+    ],
+    instrumentZones: [[gen(GEN.sampleID, 0)]],
+    presetZones: [[gen(GEN.instrument, 0)]],
+  }));
+  const plans = sf.plansFor(0, 0, 60, 127);
+  assert.equal(plans.length, 2);
+  assert.deepEqual(plans.map((p) => p.pan), [-1, 1], 'hard left and hard right');
+  const ctx = fakeCtx();
+  const left = sf.bufferFor(ctx, plans[0]);
+  const right = sf.bufferFor(ctx, plans[1]);
+  assert.notEqual(left, right, 'two different windows on the block');
+  assert.equal(sf.buffers.size, 2);
+  assert.ok(Math.abs(right.getChannelData(0)[0] - 15 * 500 / 32768) < 1e-6, 'the right half starts where it should');
 });

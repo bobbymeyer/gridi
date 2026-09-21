@@ -55,7 +55,9 @@ export function gen(id, value) {
  * @param {object} spec
  * @param {string} spec.name
  * @param {number[]} spec.pcm  sample frames, -32768..32767
+ * @param {number[]} [spec.pcmLow]  the low byte of each frame, for a 24-bit file
  * @param {object} spec.sample  the sample header's own fields
+ * @param {object[]} [spec.samples]  several headers, where one is not enough
  * @param {Uint8Array[][]} spec.instrumentZones  generator lists, global first
  * @param {Uint8Array[][]} spec.presetZones
  * @param {number} spec.bank
@@ -64,20 +66,32 @@ export function gen(id, value) {
 export function buildSf2({
   name = 'Test Font',
   pcm = [],
+  pcmLow = null,
   sample = {},
+  samples = null,
   instrumentZones = [],
   presetZones = [],
   bank = 0,
   program = 0,
 } = {}) {
-  const header = {
-    name: 'sample', start: 0, end: pcm.length, loopStart: 0, loopEnd: pcm.length,
-    sampleRate: 22050, rootKey: 60, correction: 0, link: 0, type: 1, ...sample,
-  };
+  const headers = (samples ?? [sample]).map((s, i) => ({
+    name: `sample${i || ''}`,
+    start: 0,
+    end: pcm.length,
+    loopStart: 0,
+    loopEnd: pcm.length,
+    sampleRate: 22050,
+    rootKey: 60,
+    correction: 0,
+    link: 0,
+    type: 1,
+    ...s,
+  }));
 
   const smpl = new Uint8Array(pcm.length * 2);
   const smplView = new DataView(smpl.buffer);
   pcm.forEach((v, i) => smplView.setInt16(i * 2, v, true));
+  const sm24 = pcmLow ? Uint8Array.from(pcmLow) : null;
 
   // Bags point at where their generators start; the terminal record of each
   // table points one past the end, which is how a reader knows where to stop.
@@ -122,7 +136,7 @@ export function buildSf2({
   ];
 
   const shdr = [
-    record(RECORD.shdr, (v, bytes) => {
+    ...headers.map((header) => record(RECORD.shdr, (v, bytes) => {
       bytes.set(padded(header.name, 20), 0);
       v.setUint32(20, header.start, true);
       v.setUint32(24, header.end, true);
@@ -133,7 +147,7 @@ export function buildSf2({
       v.setInt8(41, header.correction);
       v.setUint16(42, header.link, true);
       v.setUint16(44, header.type, true);
-    }),
+    })),
     record(RECORD.shdr, (v, bytes) => { bytes.set(padded('EOS', 20), 0); }),
   ];
 
@@ -143,7 +157,7 @@ export function buildSf2({
       chunk('ifil', Uint8Array.from([2, 0, 1, 0])),
       chunk('INAM', padded(name, name.length + 1)),
     ]),
-    list('sdta', [chunk('smpl', smpl)]),
+    list('sdta', sm24 ? [chunk('smpl', smpl), chunk('sm24', sm24)] : [chunk('smpl', smpl)]),
     list('pdta', [
       chunk('phdr', concat(phdr)),
       chunk('pbag', concat(pbag)),
