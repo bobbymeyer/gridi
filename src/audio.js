@@ -9,6 +9,8 @@ import {
   stealTargets, SILENCE,
 } from './voice.js';
 import { LIMITS } from './limits.js';
+import { buildSoundfontVoice } from './soundfont.js';
+import { DRUM_CHANNEL } from './gm.js';
 
 /** Ceiling across the whole patch, whatever the per-node limits add up to. */
 export const GLOBAL_VOICE_CAP = LIMITS.voices;
@@ -105,6 +107,8 @@ export class AudioEngine {
     this.live = new Set(); // scheduled sources, so panic can stop them
     this.voices = []; // sounding Voice-node notes, for voice stealing
     this.governor = null;
+    this.soundfont = null; // a loaded SoundFont, if one has been dropped in
+    this.fontVoices = []; // sounding SoundFont notes, capped the same way
   }
 
   /** Must be called from a user gesture. Browsers start contexts suspended. */
@@ -171,11 +175,21 @@ export class AudioEngine {
   }
 
   /**
-   * The audition tone for Note nodes: a short pitched blip so a patch is
-   * audible with no MIDI hardware attached, which is most of the time.
+   * Hear a Note node without MIDI hardware attached, which is most of the time.
+   *
+   * With a SoundFont loaded this is the patch's own sound: the channel's
+   * program picks the preset, so what Gridi plays to itself and what it asks a
+   * module to play are the same instrument. Without one it is the blip below,
+   * which is a click track and was never meant to be more.
+   *
+   * @param {object} [voiceOf] the channel and program this note is on
    */
-  blip(midiNote, velocity, at, dur) {
+  blip(midiNote, velocity, at, dur, voiceOf = null) {
     if (!this.ctx) return;
+    if (this.soundfont && voiceOf) {
+      this.playFont(midiNote, velocity, at, dur, voiceOf);
+      return;
+    }
     const t = Math.max(at, this.now());
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -197,6 +211,71 @@ export class AudioEngine {
     gain.connect(this.master);
     osc.start(t);
     this.track(osc, t + length + 0.05);
+  }
+
+  /**
+   * Take a SoundFont, or drop the one already loaded by passing null.
+   *
+   * @param {import('./soundfont.js').SoundFont|null} font
+   */
+  useSoundfont(font) {
+    this.soundfont?.release();
+    this.soundfont = font ?? null;
+    return this.soundfont;
+  }
+
+  /**
+   * One note through the loaded SoundFont.
+   *
+   * A preset can layer several samples on one key, so a note is usually more
+   * than one voice. They are counted against the same ceiling as everything
+   * else, and the oldest go first when the patch asks for more than the page
+   * can carry.
+   */
+  playFont(midiNote, velocity, at, dur, { channel = 1, program = 0 }) {
+    const font = this.soundfont;
+    const t = Math.max(at, this.now());
+    const bank = channel === DRUM_CHANNEL ? 128 : 0;
+    const plans = font.plansFor(bank, program, midiNote, velocity);
+    if (!plans.length) return;
+
+    if (this.fontVoices.length + plans.length > GLOBAL_VOICE_CAP) {
+      this.governor?.trip('voices', t);
+      const over = this.fontVoices.length + plans.length - GLOBAL_VOICE_CAP;
+      for (const victim of this.fontVoices.slice(0, over)) this.stealFont(victim, t);
+    }
+
+    for (const plan of plans) {
+      let built;
+      try {
+        built = buildSoundfontVoice(this.ctx, this.master, font, plan, velocity, t, dur);
+      } catch {
+        continue; // a zone the font describes but cannot actually play
+      }
+      const record = { amp: built.amp, source: built.source, start: t };
+      this.fontVoices.push(record);
+      this.register(built.source, () => {
+        this.fontVoices = this.fontVoices.filter((v) => v !== record);
+      });
+      try {
+        built.source.stop(built.stopAt);
+      } catch {
+        /* already stopped */
+      }
+    }
+  }
+
+  /** Fade a SoundFont voice out rather than cutting it, then let it go. */
+  stealFont(record, now) {
+    if (record.stolen) return;
+    record.stolen = true;
+    try {
+      record.amp.gain.cancelScheduledValues(now);
+      record.amp.gain.setTargetAtTime(SILENCE, now, STEAL_FADE / 3);
+      record.source.stop(now + STEAL_FADE);
+    } catch {
+      /* already stopped */
+    }
   }
 
   /**
@@ -276,6 +355,7 @@ export class AudioEngine {
 
   /** Stop everything already scheduled. Used by transport stop and panic. */
   allOff() {
+    this.fontVoices = [];
     const t = this.now();
     for (const record of [...this.voices]) this.retire(record);
     this.voices.length = 0;

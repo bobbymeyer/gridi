@@ -13,7 +13,7 @@ import { EventQueue, clamp, rng, wrap } from './util.js';
 import { resolveDegree, SCALES } from './music.js';
 import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds, gridBeats } from './rhythm.js';
 import { lineCells } from './geometry.js';
-import { outgoing, incoming, nodeById } from './model.js';
+import { outgoing, incoming, nodeById, soundFor } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
 import { PPQN, DEFAULT_SLOT } from './midi.js';
@@ -105,6 +105,8 @@ export class Engine {
     this.anchorBeat = 0;
     this.running = true;
 
+    this.sendSounds(patch, this.anchorTime - 0.05);
+
     // Tell the rig we are starting before the first pulse of clock reaches it.
     this.clockPulse = 0;
     this.clockOn = Boolean(patch.clockOut);
@@ -124,6 +126,26 @@ export class Engine {
     this.emitters.clear();
     this.midi.allOff();
     this.audio.allOff();
+  }
+
+  /**
+   * Put each channel on the sound the patch asks for.
+   *
+   * Sent well before the anchor rather than alongside the Start, because a
+   * device given a program change and a note in the same millisecond is
+   * entitled to play the first note on the old sound. Fifty milliseconds is
+   * nothing to wait and plenty for anything to act on.
+   *
+   * @returns {number} how many were sent
+   */
+  sendSounds(patch, at) {
+    let sent = 0;
+    for (const sound of patch.sounds ?? []) {
+      if (this.midi.sendProgram({ slot: sound.out, channel: sound.ch, program: sound.program, at })) {
+        sent += 1;
+      }
+    }
+    return sent;
   }
 
   /** Re-anchor so a tempo change takes effect from here, not from bar one. */
@@ -807,7 +829,14 @@ export class Engine {
             duration: dur,
           });
         }
-        if (node.params.audition) this.audio.blip(midiNote, vel, at, dur);
+        if (node.params.audition) {
+          // The channel's own sound, so what Gridi plays to itself is the
+          // instrument it is asking a module for rather than a stand-in.
+          this.audio.blip(midiNote, vel, at, dur, {
+            channel: chan.ch,
+            program: soundFor(patch, chan.out, chan.ch) ?? 0,
+          });
+        }
       }
       played.push({ out: chan.out, ch: chan.ch, note: midiNote, vel });
     }

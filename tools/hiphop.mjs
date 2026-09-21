@@ -5,7 +5,7 @@
 // beat is up within a bar.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, fan, phase, channel, drum, drumLine, KIT } from './lib.mjs';
+import { downstream, fan, phase, channel, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
 
 const BEAT = 4; // cells
 const BAR = 16;
@@ -112,5 +112,5 @@ export function hiphopPatch() {
     });
   });
 
-  return p;
+  return sounds(p, { 2: GM.fingeredBass, 4: GM.vibraphone, 10: GM.standardKit });
 }

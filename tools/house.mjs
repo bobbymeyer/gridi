@@ -5,7 +5,7 @@
 // is not a setting here, it is a distance.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, phase, channel, chord, drum, drumLine, KIT } from './lib.mjs';
+import { downstream, phase, channel, chord, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
 
 const BEAT = 4; // cells
 const BAR = 16;
@@ -93,5 +93,5 @@ export function housePatch() {
     line: chord(3, [0, 3, 7, 10]),
   });
 
-  return p;
+  return sounds(p, { 2: GM.synthBass, 3: GM.rhodes, 10: GM.electronicKit });
 }

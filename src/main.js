@@ -8,8 +8,11 @@ import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
 import {
   createPatch, createNode, addNode, removeNode, removeLine, connect, canConnect,
-  demoPatch, serialize, deserialize, readPatch, nodeById,
+  demoPatch, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
+import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
+import { SoundFont } from './soundfont.js';
+import { keepSoundfont, recallSoundfont, forgetSoundfont } from './store.js';
 import { typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES, noteName, resolveDegree } from './music.js';
 import { euclid, patternString, GRID_KEYS } from './rhythm.js';
@@ -699,12 +702,20 @@ function openPatch(patch, from = '') {
  * wiping the work.
  */
 async function openFromTransfer({ file, text }) {
+  if (file && /\.sf[23]$/i.test(file.name)) {
+    if (/\.sf3$/i.test(file.name)) {
+      setStatus('That is a compressed SoundFont. Gridi reads .sf2.', 'Sorry:');
+      return false;
+    }
+    await useSoundfontFile(await file.arrayBuffer(), file.name);
+    return true;
+  }
   const body = file ? await file.text() : text;
   const patch = body ? readPatch(body, onPatchLimit) : null;
   if (!patch) {
     setStatus(
       file
-        ? `${file.name} is not a Gridi patch.`
+        ? `${file.name} is neither a Gridi patch nor a SoundFont.`
         : 'That is not a Gridi patch. Save one with Save, and drop the file back here.',
       'Nothing opened.',
     );
@@ -747,10 +758,21 @@ function closeSheet() {
   $('sheet').hidden = true;
 }
 
-async function showLibrary() {
-  const list = $('sheet-list');
-  list.textContent = '';
-  $('sheet').hidden = false;
+/** Open the panel on one thing, or close it if that thing is already up. */
+function toggleSheet(title, fill) {
+  const sheet = $('sheet');
+  if (!sheet.hidden && sheet.dataset.showing === title) {
+    closeSheet();
+    return;
+  }
+  sheet.dataset.showing = title;
+  $('sheet-title').textContent = title;
+  $('sheet-list').textContent = '';
+  sheet.hidden = false;
+  fill($('sheet-list'));
+}
+
+async function showLibrary(list) {
   try {
     const entries = await loadLibrary();
     if (!entries.length) {
@@ -785,10 +807,192 @@ async function showLibrary() {
   }
 }
 
-$('library').addEventListener('click', () => {
-  if ($('sheet').hidden) showLibrary();
-  else closeSheet();
-});
+$('library').addEventListener('click', () => toggleSheet('library', showLibrary));
+
+/* ------------------------------------------------------------- soundfont */
+
+/** "34 sounds", or "1 sound", because the difference is always noticed. */
+const describe = (font) => `${font.presetCount} sound${font.presetCount === 1 ? '' : 's'}`;
+
+/** A file size somebody would say out loud. */
+const size = (bytes) => (bytes >= 1e6 ? `${Math.round(bytes / 1e6)}MB` : `${Math.round(bytes / 1e3)}KB`);
+
+/**
+ * Take a SoundFont file.
+ *
+ * Parsing is the cheap part -- it builds an index and never touches the sample
+ * block -- so even a hundred-megabyte General MIDI font is ready by the time
+ * the file has been read. Keeping it is separate and allowed to fail: a font
+ * that will not fit in storage still plays, it just has to be dropped again
+ * next time.
+ */
+async function useSoundfontFile(bytes, name, { keep = true } = {}) {
+  let font;
+  try {
+    font = new SoundFont(bytes, name);
+  } catch (err) {
+    setStatus(`${name} could not be read as a SoundFont.`, 'Sorry:');
+    return null;
+  }
+  audio.useSoundfont(font);
+  const has = describe(font);
+  if (!keep) {
+    setStatus(`${font.label}, ${has}. Patches play through it.`, 'SoundFont.');
+    return font;
+  }
+  const kept = await keepSoundfont(bytes, name);
+  setStatus(
+    kept
+      ? `${font.label}, ${has}, ${size(font.bytes)}. Kept for next time.`
+      : `${font.label}, ${has}. Too big to keep, so drop it again next time.`,
+    'SoundFont.',
+  );
+  if (!$('sheet').hidden && $('sheet').dataset.showing === 'sounds') showSounds($('sheet-list'));
+  return font;
+}
+
+/**
+ * The bundled font, as `soundfont/index.json` describes it. Read once.
+ */
+let bundled = null;
+async function bundledFont() {
+  if (bundled) return bundled;
+  const res = await fetch('soundfont/index.json');
+  if (!res.ok) throw new Error(`soundfont index ${res.status}`);
+  bundled = await res.json();
+  return bundled;
+}
+
+/**
+ * The font to start with: the one dropped in last time, or the one that ships.
+ *
+ * Nothing waits on this. A patch is playable before the font arrives and
+ * better afterwards, and a browser caches thirty megabytes perfectly well, so
+ * the cost is paid once.
+ */
+async function startingFont() {
+  const held = await recallSoundfont();
+  if (held) {
+    await useSoundfontFile(held.bytes, held.name, { keep: false });
+    return;
+  }
+  try {
+    const entry = await bundledFont();
+    setStatus(`Loading ${entry.name}…`, 'SoundFont.');
+    const res = await fetch(`soundfont/${entry.file}`);
+    if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
+    // Not kept in storage: it is on disk beside the app already, and putting a
+    // second copy in the browser's quota would only crowd out a font someone
+    // actually chose.
+    const font = await useSoundfontFile(await res.arrayBuffer(), entry.file, { keep: false });
+    if (font) {
+      setStatus(`${entry.name} by ${entry.author}, ${describe(font)}. Ready.`, 'SoundFont.');
+    }
+  } catch {
+    setStatus('No SoundFont. Drop a .sf2 on the canvas to hear these sounds.', '');
+  }
+}
+
+/* ----------------------------------------------------------------- sounds */
+
+/**
+ * What each channel of this patch should be playing.
+ *
+ * The rows are the channels the patch actually plays on, worked out from the
+ * graph, so there is never a row for a channel nothing reaches. Choosing a
+ * sound writes a program number into the patch; the transport sends it on the
+ * way in, and anything receiving is on the right sound before the first note.
+ */
+function showSounds(list) {
+  const font = audio.soundfont;
+  const banner = document.createElement('p');
+  banner.className = 'sheet__note';
+  if (font) {
+    banner.textContent = `Playing through ${font.label}, ${describe(font)}.`;
+    // Whose work this is, where the sound is chosen. The bundled font is
+    // somebody's years of recording; a line of credit is the least of it.
+    if (bundled && font.label.startsWith(bundled.name)) {
+      banner.append(document.createElement('br'));
+      banner.append(`by ${bundled.author} — `);
+      const link = document.createElement('a');
+      link.href = bundled.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = bundled.url.replace(/^https?:\/\//, '');
+      banner.append(link, ' ');
+    } else {
+      banner.append(' ');
+    }
+    const drop = document.createElement('button');
+    drop.className = 'sheet__link';
+    drop.textContent = 'forget it';
+    drop.addEventListener('click', async () => {
+      audio.useSoundfont(null);
+      await forgetSoundfont();
+      setStatus('SoundFont dropped. Notes are back to the built-in blip.', 'Sounds.');
+      showSounds(list);
+    });
+    banner.append(drop);
+  } else {
+    banner.textContent = 'No SoundFont. Drop a .sf2 on the canvas to hear these sounds.';
+  }
+  list.append(banner);
+
+  const channels = usedChannels(state.patch);
+  if (!channels.length) {
+    list.append(Object.assign(document.createElement('p'), {
+      className: 'sheet__note',
+      textContent: 'Nothing is playing yet. Patch a Note node up and its channel appears here.',
+    }));
+    return;
+  }
+
+  for (const { out, ch } of channels) {
+    const row = document.createElement('div');
+    row.className = 'sheet__row';
+    row.append(Object.assign(document.createElement('span'), {
+      textContent: ch === DRUM_CHANNEL ? `${out} · ch ${ch} · drums` : `${out} · ch ${ch}`,
+    }));
+
+    const pick = document.createElement('select');
+    pick.className = 'field';
+    pick.setAttribute('aria-label', `Sound for output ${out} channel ${ch}`);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = '— leave as it is —';
+    pick.append(none);
+    for (const { value, label } of programsFor(ch)) {
+      const opt = document.createElement('option');
+      opt.value = String(value);
+      opt.textContent = `${String(value).padStart(3, ' ')}  ${label}`;
+      pick.append(opt);
+    }
+    const current = soundFor(state.patch, out, ch);
+    pick.value = current === null ? '' : String(current);
+    pick.addEventListener('change', () => {
+      const program = pick.value === '' ? null : Number(pick.value);
+      setSound(state.patch, out, ch, program);
+      save();
+      if (program === null) {
+        setStatus(`${out} channel ${ch} is left on whatever the device has.`, 'Sound.');
+        return;
+      }
+      // Send it now as well as at the next start, so the change is audible
+      // while you are choosing rather than only after pressing play.
+      midi.sendProgram({ slot: out, channel: ch, program, at: audio.now() });
+      setStatus(`${out} channel ${ch} is ${programName(program, ch)}.`, 'Sound.');
+    });
+    row.append(pick);
+    list.append(row);
+  }
+
+  list.append(Object.assign(document.createElement('p'), {
+    className: 'sheet__note',
+    textContent: 'General MIDI program numbers, sent when the transport starts.',
+  }));
+}
+
+$('sounds').addEventListener('click', () => toggleSheet('sounds', showSounds));
 $('sheet-close').addEventListener('click', closeSheet);
 
 /*
@@ -1170,6 +1374,9 @@ function boot() {
   renderer.readColors();
 
   populateKeySelects();
+  // The font from last time, if there was one. Nothing waits on it: a patch is
+  // playable before it arrives, and louder afterwards.
+  startingFont();
   showEnvironmentWarning();
   buildSlotPicker();
   syncMidi();

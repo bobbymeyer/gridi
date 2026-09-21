@@ -8,10 +8,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readPatch, outgoing, nodeById } from '../src/model.js';
+import { readPatch, outgoing, nodeById, usedChannels } from '../src/model.js';
 import { lineCells } from '../src/geometry.js';
 import { gridBeats } from '../src/rhythm.js';
 import { LIBRARY } from '../tools/build.mjs';
+import { GM_KITS } from '../src/gm.js';
 
 const read = (file) => readFileSync(new URL(`../patches/${file}`, import.meta.url), 'utf8');
 const index = JSON.parse(read('index.json'));
@@ -122,6 +123,7 @@ function shape(patch) {
   return JSON.stringify({
     name: patch.name,
     bpm: patch.bpm,
+    sounds: patch.sounds,
     grid: patch.grid,
     root: patch.root,
     scale: patch.scale,
@@ -233,4 +235,34 @@ test('the ambient loops share no factors, so the piece does not come round', () 
   const lcm = lengths.reduce((a, b) => (a * b) / gcd(a, b));
   assert.equal(lcm, 80080, 'beats before the five of them line up again');
   assert.ok(lcm / patch.bpm / 60 > 20, `only ${(lcm / patch.bpm / 60).toFixed(1)} hours`);
+});
+
+/* ------------------------------------------------------------ sounds */
+
+test('every library patch says what each of its channels should play', () => {
+  for (const entry of index.patches) {
+    const patch = readPatch(read(entry.file));
+    const playing = usedChannels(patch);
+    assert.ok(playing.length, `${entry.file} plays on something`);
+    for (const { out, ch } of playing) {
+      const sound = patch.sounds.find((s) => s.out === out && s.ch === ch);
+      assert.ok(sound, `${entry.file} leaves ${out} channel ${ch} unnamed`);
+      assert.ok(sound.program >= 0 && sound.program <= 127, `${entry.file} ch ${ch}`);
+    }
+    for (const sound of patch.sounds) {
+      assert.ok(
+        playing.some((c) => c.out === sound.out && c.ch === sound.ch),
+        `${entry.file} names ${sound.out} channel ${sound.ch}, which nothing plays on`,
+      );
+    }
+  }
+});
+
+test('the drum channel is given a kit, not an instrument', () => {
+  for (const entry of index.patches) {
+    const patch = readPatch(read(entry.file));
+    const drums = patch.sounds.find((s) => s.ch === 10);
+    if (!drums) continue;
+    assert.ok(GM_KITS[drums.program], `${entry.file} asks for program ${drums.program} on channel 10`);
+  }
 });

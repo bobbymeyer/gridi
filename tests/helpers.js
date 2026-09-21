@@ -16,6 +16,11 @@ export function fakeMidi() {
       this.controls.push({ slot, ch: channel, cc: controller, value, at });
       return true;
     },
+    programs: [],
+    sendProgram({ slot = 'A', channel, program, at }) {
+      this.programs.push({ slot, ch: channel, program, at });
+      return true;
+    },
     allOff() { this.messages.push({ type: 'allOff' }); },
     flush() {},
     sendClock(at) { this.messages.push({ type: 'clock', at }); },
@@ -34,7 +39,7 @@ export function fakeAudio() {
     blips: [],
     voices: [],
     now() { return this.t; },
-    blip(note, vel, at, dur) { this.blips.push({ note, vel, at, dur }); },
+    blip(note, vel, at, dur, voiceOf = null) { this.blips.push({ note, vel, at, dur, voiceOf }); },
     voice(params, note, vel, at, dur) { this.voices.push({ note, vel, at, dur }); },
     allOff() {},
   };

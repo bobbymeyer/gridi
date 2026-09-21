@@ -221,6 +221,67 @@ several of them is arithmetic:
 node tools/build.mjs
 ```
 
+## soundfont
+
+Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and loads it
+on first run. 261 instruments and 13 drum kits in 32MB.
+
+<https://www.schristiancollins.com/generaluser>
+
+His licence is in `soundfont/LICENSE.txt`, unaltered. It permits use in
+software projects and redistribution, and asks that nobody link directly to his
+download files — which is why the copy is in this repository rather than
+fetched from his site. If you get use out of it,
+[buy him a coffee](https://buymeacoffee.com/schristiancollins).
+
+Drop any other `.sf2` on the canvas to play through that instead.
+
+| | |
+| --- | --- |
+| Format | SoundFont 2. Compressed `.sf3` is not read |
+| A dropped font | Kept in IndexedDB, so it survives a reload. **forget it**, in the Sounds panel, goes back to the bundled one |
+| Channel 10 | Looked up in bank 128, where a General MIDI font keeps its kits |
+| Modulators | Velocity and key number, over the two default routings. A font's own replace a default that reads and writes the same things |
+| Not read | Modulators sourced from the wheel, the pedals, aftertouch or the bender, since none of them reach the internal player. Reverb and chorus sends, which Gridi has nowhere to put |
+
+Velocity goes through the font rather than around it: it reaches loudness and
+filter cutoff by the routings the font carries, so an instrument gets darker as
+well as quieter as you play softer.
+
+Samples are decoded when a preset is first played and kept after, so a
+thirty-megabyte font costs the file plus the few sounds a patch uses.
+
+With no font at all, Note nodes audition through a single triangle oscillator.
+That is a click track for building a patch, not an instrument.
+
+## sounds
+
+**Sounds** in the left rail lists the channels a patch plays on, worked out
+from the graph, and sets a General MIDI program for each. Gridi sends them as
+program changes 50ms before the first note, so a receiving module is on the
+right sound before it has anything to play.
+
+| | |
+| --- | --- |
+| Numbers | 0–127, as they go down the wire. Every printed GM chart counts from 1 |
+| Channel 10 | Offered as kits rather than instruments |
+| Leave as it is | No entry, no program change: the device keeps whatever it had |
+
+Bank select is not sent, so a module with more than 128 sounds needs its bank
+chosen on the device.
+
+What the library asks for:
+
+| Patch | ch 1 | ch 2 | ch 3 | ch 4 | ch 10 |
+| --- | --- | --- | --- | --- | --- |
+| Bossa Nova | | Acoustic Bass | Acoustic Guitar (nylon) | Flute | |
+| Samba | | Acoustic Bass | | | Standard Kit |
+| House | | Synth Bass 1 | Electric Piano 1 | | Electronic Kit |
+| Hip-Hop | | Electric Bass (finger) | | Vibraphone | Standard Kit |
+| Ambient | Pad 2 (warm) | | | | |
+
+Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
+
 ## patches
 
 A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
@@ -229,6 +290,7 @@ rail; **Save** names the file after it.
 | To open one | How |
 | --- | --- |
 | A file | Drop it anywhere on the canvas, or press **Open** |
+| A SoundFont | Drop the `.sf2` on the canvas too, replacing the bundled one |
 | Its text | Paste it onto the canvas |
 
 Opening replaces the canvas and goes on the undo stack. ⌘Z puts back what was
@@ -257,8 +319,8 @@ machine binds its own devices.
 Outputs are named slots. A patch stores the slot letter; each machine binds its
 own devices, remembered between sessions.
 
-Sent: note on, note off, control change, clock at 24 PPQN, start, stop,
-continue, song position.
+Sent: note on, note off, control change, program change, clock at 24 PPQN,
+start, stop, continue, song position.
 
 Received: clock, start, stop, continue, song position, note on.
 
@@ -280,6 +342,8 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Set what a cell is worth | Grid, in the header |
 | Open a patch | Drop the file on the canvas, or paste its text |
 | Open a patch that ships with Gridi | Library, in the left rail |
+| Choose what each channel plays | Sounds, in the left rail |
+| Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -366,9 +430,11 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 ## tech
 
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
-voices, Web MIDI for output and input.
+voices and the SoundFont player, Web MIDI for output and input. The SoundFont
+parser is `src/sf2.js` and touches no browser API, so it is read and checked
+outside one.
 
-`npm test` runs 253 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 320 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
