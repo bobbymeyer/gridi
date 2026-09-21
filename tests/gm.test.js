@@ -41,7 +41,7 @@ function patchOn(...channels) {
   p.bpm = 120;
   const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/4' }));
   channels.forEach((ch, i) => {
-    const note = addNode(p, createNode('note', 20, i * 6, { audition: false }));
+    const note = addNode(p, createNode('note', 20, i * 6, { audition: true }));
     const line = connect(p, clock.id, note.id);
     line.channelMode = 'set';
     line.channels = [createChannel(ch)];
@@ -180,4 +180,58 @@ test('a program change is held to the range the wire allows', async () => {
 test('with nothing bound, sending a program says so rather than throwing', async () => {
   const { midi } = await wiredMidi({ slots: { A: 'p1' } });
   assert.equal(midi.sendProgram({ slot: 'B', channel: 1, program: 4, at: 0 }), false);
+});
+
+/* ------------------------------------- the sound the patch plays to itself */
+
+test('a note auditions on the sound its channel was given', () => {
+  const p = patchOn(3);
+  setSound(p, 'A', 3, 73); // flute
+  const audio = fakeAudio();
+  const engine = new Engine({ getPatch: () => p, audio, midi: fakeMidi() });
+  engine.start();
+  // Long enough for the pulse to walk the line, which is the usual reason a
+  // window that looks generous turns out not to be.
+  for (let t = 0; t < 4; t += 0.02) {
+    audio.t = t;
+    engine.tick();
+  }
+  assert.ok(audio.blips.length, 'it auditioned');
+  for (const blip of audio.blips) {
+    assert.deepEqual(blip.voiceOf, { channel: 3, program: 73 });
+  }
+});
+
+test('a channel with no sound named auditions on program zero', () => {
+  const p = patchOn(2);
+  const audio = fakeAudio();
+  const engine = new Engine({ getPatch: () => p, audio, midi: fakeMidi() });
+  engine.start();
+  for (let t = 0; t < 4; t += 0.02) {
+    audio.t = t;
+    engine.tick();
+  }
+  assert.deepEqual(audio.blips[0].voiceOf, { channel: 2, program: 0 });
+});
+
+test('a chord on one channel auditions every note of it on that sound', () => {
+  const p = createPatch('chord');
+  p.bpm = 120;
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/2' }));
+  const note = addNode(p, createNode('note', 20, 0, {}));
+  const line = connect(p, clock.id, note.id);
+  line.channelMode = 'set';
+  line.channels = [0, 4, 7].map((t) => ({ ...createChannel(3), transpose: t }));
+  setSound(p, 'A', 3, 4);
+
+  const audio = fakeAudio();
+  const engine = new Engine({ getPatch: () => p, audio, midi: fakeMidi() });
+  engine.start();
+  for (let t = 0; t < 4; t += 0.02) {
+    audio.t = t;
+    engine.tick();
+  }
+  const first = audio.blips.filter((b) => Math.abs(b.at - audio.blips[0].at) < 1e-9);
+  assert.equal(first.length, 3, 'three notes of the chord');
+  assert.ok(first.every((b) => b.voiceOf.program === 4 && b.voiceOf.channel === 3));
 });

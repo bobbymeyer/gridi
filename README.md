@@ -221,6 +221,26 @@ several of them is arithmetic:
 node tools/build.mjs
 ```
 
+## soundfont
+
+Drop a `.sf2` anywhere on the canvas and Gridi plays through it. The channel
+programs above pick the presets, so what Gridi plays to itself is the
+instrument it is asking a module for.
+
+| | |
+| --- | --- |
+| Format | SoundFont 2. Compressed `.sf3` is not read |
+| Kept | In IndexedDB, so it survives a reload. Drop a new one to replace it |
+| Dropping it | **forget it**, in the Sounds panel |
+| Channel 10 | Looked up in bank 128, which is where a General MIDI font keeps its kits |
+
+Without one, Note nodes audition through a single triangle oscillator. That is
+a click track for building a patch, not an instrument.
+
+Samples are decoded when a preset is first played and kept after, so a
+hundred-megabyte General MIDI font costs the file plus the few sounds a patch
+uses.
+
 ## sounds
 
 **Sounds** in the left rail lists the channels a patch plays on, worked out
@@ -257,6 +277,7 @@ rail; **Save** names the file after it.
 | To open one | How |
 | --- | --- |
 | A file | Drop it anywhere on the canvas, or press **Open** |
+| A SoundFont | Drop the `.sf2` on the canvas too |
 | Its text | Paste it onto the canvas |
 
 Opening replaces the canvas and goes on the undo stack. ⌘Z puts back what was
@@ -309,6 +330,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Open a patch | Drop the file on the canvas, or paste its text |
 | Open a patch that ships with Gridi | Library, in the left rail |
 | Choose what each channel plays | Sounds, in the left rail |
+| Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
 | Mute selected line | M, or double-click the line |
@@ -395,9 +417,11 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 ## tech
 
 Vanilla ES modules. No build, no dependencies. Web Audio for the built-in
-voices, Web MIDI for output and input.
+voices and the SoundFont player, Web MIDI for output and input. The SoundFont
+parser is `src/sf2.js` and touches no browser API, so it is read and checked
+outside one.
 
-`npm test` runs 269 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 302 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

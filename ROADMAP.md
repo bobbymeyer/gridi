@@ -14,6 +14,8 @@
 | A pulse takes musical time to walk a line, a cell at a time | Geometry as pure layout, timing from the emitter and a line delay only | Reversed. Layout that costs nothing is a diagram; layout that costs time is a score, and the patch becomes something you compose by moving. The line delay stays as a trim |
 | A cell is a note value the patch sets, default 1/8 | A fixed value, or seconds per cell | The whole point is that the distance is musical, and one setting rescales an entire patch. Bar and beat rules follow it, so the field reads as time |
 | A latched key is read when a note sounds | Read when its pulse left the emitter, as it was | Travel time can be bars. Read at the emitter, a chord change reached a note only after the note had already sounded in the old key, so the harmony drifted off the bar |
+| A SoundFont player, fed by a file the user drops in | Bundling a sound set, or leaving the built-in blip as the only voice | A General MIDI font is a hundred megabytes, which nothing should ship; but the blip is a click track and a library of patches nobody can hear is not a library. Dropping a file is a path the app already had |
+| Sample buffers are built when a preset is first played | Decoding the whole font on load | Converting every sample to float up front is gigabytes for a set a patch uses thirty sounds of |
 | A patch names a program per channel, sent 50ms before the first note | Program changes on a line, alongside its channels | A channel's sound is a property of the channel, and one channel is reached by many lines. Fifty milliseconds because a device handed a program change and a note together is entitled to play the note on the old sound |
 | Program numbers are stored as they go down the wire, 0-127 | The 1-128 every printed chart uses | One of the two is going to be off by one wherever it is read. Storing the wire value keeps the arithmetic out of the engine, and the interface shows the name beside the number so nobody has to count |
 | No bank select | CC 0 and 32 alongside the program change | The library is General MIDI, which needs no bank. MSB, LSB and which of them a maker uses is a rabbit hole to go down when a patch needs it |
@@ -29,6 +31,6 @@
 
 | Not doing | Instead |
 | --- | --- |
-| Being an audio engine | The built-in voices are for sketching a patch. Heavy synthesis belongs in a DAW or hardware instrument over MIDI |
+| Being a synthesiser | The built-in voices are for sketching a patch, and the SoundFont player plays samples somebody else recorded. Neither is here to be an instrument; heavy synthesis belongs in a DAW or hardware over MIDI |
 | Safari and iOS support for MIDI | No WebKit browser implements Web MIDI. Those browsers get the built-in voices and are told so |
 | Sample-accurate MIDI | Web MIDI schedules in `performance.now()`; the offset to audio time is held steady rather than assumed exact |

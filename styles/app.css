@@ -558,6 +558,16 @@ input[type="checkbox"]:checked::after {
 .sheet__row > span { font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
 .sheet__row select { width: 100%; }
 
+.sheet__link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .sheet[hidden] { display: none; }
 
 /* Inspector ---------------------------------------------------------------- */

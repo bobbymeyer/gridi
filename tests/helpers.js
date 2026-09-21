@@ -39,7 +39,7 @@ export function fakeAudio() {
     blips: [],
     voices: [],
     now() { return this.t; },
-    blip(note, vel, at, dur) { this.blips.push({ note, vel, at, dur }); },
+    blip(note, vel, at, dur, voiceOf = null) { this.blips.push({ note, vel, at, dur, voiceOf }); },
     voice(params, note, vel, at, dur) { this.voices.push({ note, vel, at, dur }); },
     allOff() {},
   };

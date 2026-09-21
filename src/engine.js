@@ -13,7 +13,7 @@ import { EventQueue, clamp, rng, wrap } from './util.js';
 import { resolveDegree, SCALES } from './music.js';
 import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds, gridBeats } from './rhythm.js';
 import { lineCells } from './geometry.js';
-import { outgoing, incoming, nodeById } from './model.js';
+import { outgoing, incoming, nodeById, soundFor } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
 import { PPQN, DEFAULT_SLOT } from './midi.js';
@@ -829,7 +829,14 @@ export class Engine {
             duration: dur,
           });
         }
-        if (node.params.audition) this.audio.blip(midiNote, vel, at, dur);
+        if (node.params.audition) {
+          // The channel's own sound, so what Gridi plays to itself is the
+          // instrument it is asking a module for rather than a stand-in.
+          this.audio.blip(midiNote, vel, at, dur, {
+            channel: chan.ch,
+            program: soundFor(patch, chan.out, chan.ch) ?? 0,
+          });
+        }
       }
       played.push({ out: chan.out, ch: chan.ch, note: midiNote, vel });
     }

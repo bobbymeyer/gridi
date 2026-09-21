@@ -11,6 +11,8 @@ import {
   demoPatch, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
 import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
+import { SoundFont } from './soundfont.js';
+import { keepSoundfont, recallSoundfont, forgetSoundfont } from './store.js';
 import { typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES, noteName, resolveDegree } from './music.js';
 import { euclid, patternString, GRID_KEYS } from './rhythm.js';
@@ -700,12 +702,20 @@ function openPatch(patch, from = '') {
  * wiping the work.
  */
 async function openFromTransfer({ file, text }) {
+  if (file && /\.sf[23]$/i.test(file.name)) {
+    if (/\.sf3$/i.test(file.name)) {
+      setStatus('That is a compressed SoundFont. Gridi reads .sf2.', 'Sorry:');
+      return false;
+    }
+    await useSoundfontFile(await file.arrayBuffer(), file.name);
+    return true;
+  }
   const body = file ? await file.text() : text;
   const patch = body ? readPatch(body, onPatchLimit) : null;
   if (!patch) {
     setStatus(
       file
-        ? `${file.name} is not a Gridi patch.`
+        ? `${file.name} is neither a Gridi patch nor a SoundFont.`
         : 'That is not a Gridi patch. Save one with Save, and drop the file back here.',
       'Nothing opened.',
     );
@@ -799,6 +809,55 @@ async function showLibrary(list) {
 
 $('library').addEventListener('click', () => toggleSheet('library', showLibrary));
 
+/* ------------------------------------------------------------- soundfont */
+
+/** "34 sounds", or "1 sound", because the difference is always noticed. */
+const describe = (font) => `${font.presetCount} sound${font.presetCount === 1 ? '' : 's'}`;
+
+/** A file size somebody would say out loud. */
+const size = (bytes) => (bytes >= 1e6 ? `${Math.round(bytes / 1e6)}MB` : `${Math.round(bytes / 1e3)}KB`);
+
+/**
+ * Take a SoundFont file.
+ *
+ * Parsing is the cheap part -- it builds an index and never touches the sample
+ * block -- so even a hundred-megabyte General MIDI font is ready by the time
+ * the file has been read. Keeping it is separate and allowed to fail: a font
+ * that will not fit in storage still plays, it just has to be dropped again
+ * next time.
+ */
+async function useSoundfontFile(bytes, name, { keep = true } = {}) {
+  let font;
+  try {
+    font = new SoundFont(bytes, name);
+  } catch (err) {
+    setStatus(`${name} could not be read as a SoundFont.`, 'Sorry:');
+    return null;
+  }
+  audio.useSoundfont(font);
+  const has = describe(font);
+  if (!keep) {
+    setStatus(`${font.label}, ${has}. Patches play through it.`, 'SoundFont.');
+    return font;
+  }
+  const kept = await keepSoundfont(bytes, name);
+  setStatus(
+    kept
+      ? `${font.label}, ${has}, ${size(font.bytes)}. Kept for next time.`
+      : `${font.label}, ${has}. Too big to keep, so drop it again next time.`,
+    'SoundFont.',
+  );
+  if (!$('sheet').hidden && $('sheet').dataset.showing === 'sounds') showSounds($('sheet-list'));
+  return font;
+}
+
+/** The font from last time, if there was one. */
+async function recallFont() {
+  const held = await recallSoundfont();
+  if (!held) return;
+  await useSoundfontFile(held.bytes, held.name, { keep: false });
+}
+
 /* ----------------------------------------------------------------- sounds */
 
 /**
@@ -810,6 +869,26 @@ $('library').addEventListener('click', () => toggleSheet('library', showLibrary)
  * way in, and anything receiving is on the right sound before the first note.
  */
 function showSounds(list) {
+  const font = audio.soundfont;
+  const banner = document.createElement('p');
+  banner.className = 'sheet__note';
+  if (font) {
+    banner.textContent = `Playing through ${font.label}, ${describe(font)}. `;
+    const drop = document.createElement('button');
+    drop.className = 'sheet__link';
+    drop.textContent = 'forget it';
+    drop.addEventListener('click', async () => {
+      audio.useSoundfont(null);
+      await forgetSoundfont();
+      setStatus('SoundFont dropped. Notes are back to the built-in blip.', 'Sounds.');
+      showSounds(list);
+    });
+    banner.append(drop);
+  } else {
+    banner.textContent = 'No SoundFont. Drop a .sf2 on the canvas to hear these sounds.';
+  }
+  list.append(banner);
+
   const channels = usedChannels(state.patch);
   if (!channels.length) {
     list.append(Object.assign(document.createElement('p'), {
@@ -1246,6 +1325,9 @@ function boot() {
   renderer.readColors();
 
   populateKeySelects();
+  // The font from last time, if there was one. Nothing waits on it: a patch is
+  // playable before it arrives, and louder afterwards.
+  recallFont();
   showEnvironmentWarning();
   buildSlotPicker();
   syncMidi();
