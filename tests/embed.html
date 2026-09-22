@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gridi — embed check</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e1251b'/%3E%3Crect x='6' y='6' width='8' height='8' fill='%23fff'/%3E%3Crect x='18' y='18' width='8' height='8' fill='%23fff'/%3E%3C/svg%3E">  <!-- so the check is not muddied by a favicon 404 -->
+<!--
+  A stand-in for a page that embeds gridi: bobbymeyer.com mounts it in a note
+  this way. The point of the check is not that gridi runs — the app's own page
+  shows that — but that it runs *inside someone else's document* without the
+  two of them reaching into each other, and that it can be taken back out.
+
+  The host deliberately sets its own --ink and --paper and its own body type,
+  so a leak in either direction shows up as a colour rather than as a silence.
+-->
+<style>
+  :root { --ink: #b00020; --paper: #fffbea; }
+  body {
+    margin: 0;
+    padding: 2rem;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.5 Georgia, serif;
+  }
+  h1 { font-size: 1.4rem; }
+  button { font: inherit; padding: .3em .8em; }
+  #host { height: 70vh; margin: 1rem 0; border: 1px solid currentColor; }
+</style>
+</head>
+<body>
+
+<h1>host page</h1>
+<p>This paragraph is the host's own type and colour. It must not change.</p>
+
+<p>
+  <button id="mount">mount</button>
+  <button id="unmount">unmount</button>
+  <span id="state">not mounted</span>
+</p>
+
+<div id="host"></div>
+
+<p>Still the host's paragraph, after the app.</p>
+
+<script type="module">
+// Set before the import, so the module does not start itself against #app.
+window.__gridiEmbedded = true;
+
+const { initGridi, destroyGridi, getGridi } = await import('../src/main.js');
+
+const host = document.getElementById('host');
+const state = document.getElementById('state');
+let shadow = null;
+
+function mount() {
+  if (getGridi()) return;
+
+  // A shadow root, because gridi's stylesheet is a whole application's worth
+  // of chrome — a `*` reset and rules on `html, body` among it — and the host
+  // page has styles of its own that it would rather keep. Neither side's CSS
+  // crosses the boundary, so nothing has to be rewritten to make them fit.
+  shadow ??= host.attachShadow({ mode: 'open' });
+  shadow.innerHTML = '<link rel="stylesheet" href="../styles/app.css"><div class="app"></div>';
+
+  initGridi(shadow.querySelector('.app'), {
+    embedded: true,
+    mark: false,
+    storagePrefix: 'embed:',
+  });
+  state.textContent = 'mounted';
+}
+
+function unmount() {
+  destroyGridi();
+  state.textContent = 'not mounted';
+}
+
+document.getElementById('mount').addEventListener('click', mount);
+document.getElementById('unmount').addEventListener('click', unmount);
+
+// Exposed so a browser check can drive this without clicking.
+Object.assign(window, { mount, unmount, getGridi });
+</script>
+
+</body>
+</html>
