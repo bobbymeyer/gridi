@@ -4,7 +4,8 @@
    modular grid, and four flat colours. No gradients, no shadows, no radii.
    ========================================================================== */
 
-:root {
+:root,
+.gridi-root {
   --paper: #ffffff;
   --paper-2: #f0f0f0;
   --ink: #111111;
@@ -25,7 +26,8 @@
   --track: 0.14em;
 }
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+.gridi-root[data-theme="dark"] {
   --paper: #0f0f0f;
   --paper-2: #1a1a1a;
   --ink: #f5f5f5;

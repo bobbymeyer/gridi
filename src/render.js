@@ -110,8 +110,11 @@ export function nodeReadout(node, patch) {
 }
 
 export class Renderer {
-  constructor(canvas, ctxProviders) {
+  constructor(canvas, ctxProviders, colorHost = document.documentElement) {
     this.canvas = canvas;
+    // Where the CSS custom properties hang. The page, standalone; the mount
+    // when gridi is embedded, where `:root` is somebody else's element.
+    this.colorHost = colorHost;
     this.ctx = canvas.getContext('2d');
     this.get = ctxProviders; // { patch, view, selection, ui, clock }
     this.pulses = [];
@@ -123,7 +126,7 @@ export class Renderer {
   }
 
   readColors() {
-    const cs = getComputedStyle(document.documentElement);
+    const cs = getComputedStyle(this.colorHost);
     const v = (name, fallback) => (cs.getPropertyValue(name) || fallback).trim();
     this.colors = {
       ink: v('--ink', '#111'),

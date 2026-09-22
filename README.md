@@ -15,9 +15,37 @@ http://localhost:8080
 Web MIDI needs a secure context, so use `localhost` or https. Any static server
 works; there is nothing to build.
 
+It is published from `main` to <https://bobbymeyer.github.io/gridi/>, which is
+the secure context the browser wants and the copy the embed below loads.
+
 ```sh
 npm test
 ```
+
+## embedding
+
+gridi builds itself into an element, so it can run somewhere that is not its
+own page — a note on bobbymeyer.com, for instance.
+
+```js
+// Before the import, so the module does not start itself against #app.
+window.__gridiEmbedded = true;
+const { initGridi, destroyGridi } = await import('https://bobbymeyer.github.io/gridi/src/main.js');
+
+initGridi(element, {
+  embedded: true,        // theme the mount, not the host page's <html>
+  mark: false,           // drop the lockup, keep the transport
+  storagePrefix: 'note:' // its own patch, not the one you are working on
+});
+
+destroyGridi();          // stops the clock, the audio and the MIDI ports
+```
+
+Every lookup is scoped to the mount, so an embedded copy cannot collect the
+host page's elements. Its stylesheet is a whole application's worth of chrome
+though — a `*` reset, rules on `html, body` — so mount it in a shadow root and
+let the two documents keep their own styling. `tests/embed.html` does exactly
+that, and is the check that neither side reaches the other.
 
 Open `http://localhost:8080/tests/audio-check.html` for the synth checks, which
 need a browser.
