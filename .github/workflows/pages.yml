@@ -9,6 +9,14 @@
 # Everything ships as it sits in the repository. There is no build step and no
 # dependency to install — the app is ES modules the browser reads directly,
 # which is the point of it.
+#
+# One thing here cannot do itself: Pages has to be switched on once, by hand,
+# under Settings → Pages → Build and deployment → Source: GitHub Actions. This
+# workflow first tried to do it with `enablement: true` on configure-pages,
+# which fails with "Create Pages site failed: Resource not accessible by
+# integration" — the workflow's own token is allowed to publish to a Pages
+# site but not to bring one into existence. Until that toggle is set, every
+# run here dies on the configure step.
 
 name: pages
 
@@ -34,8 +42,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       # No install: package.json declares no dependencies, and the tests are
@@ -50,13 +58,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      # `enablement` turns Pages on for the repository the first time this
-      # runs, using the `pages: write` permission above, so the site does not
-      # wait on somebody remembering to flip a setting.
+      - uses: actions/checkout@v5
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
