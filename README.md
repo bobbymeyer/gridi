@@ -16,7 +16,9 @@ Web MIDI needs a secure context, so use `localhost` or https. Any static server
 works; there is nothing to build.
 
 It is published from `main` to <https://bobbymeyer.github.io/gridi/>, which is
-the secure context the browser wants and the copy the embed below loads.
+the secure context the browser wants and the copy the embed below loads. That
+needs Pages switched on once, under Settings → Pages → Build and deployment →
+Source: **GitHub Actions**; the workflow cannot do it for itself.
 
 ```sh
 npm test
