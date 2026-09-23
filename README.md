@@ -391,7 +391,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Play / stop | Space, or Play |
 | Place a node | Click a type in the left rail, then click the grid. Shift keeps placing. |
 | Show the node names | The chevron beside **nodes**. The rail keeps to its colours until then, and remembers which way it was left. |
-| Fold the inspector away | The chevron in its head |
+| Fold the inspector away | The chevron in its head. Selecting something opens it again. |
 | Project settings, the library, MIDI ports | The three tabs in the header |
 | Patch two nodes | Drag from a node's right edge onto another node |
 | Select | Click a node or a line |
