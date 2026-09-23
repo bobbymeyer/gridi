@@ -945,42 +945,54 @@ export function initGridi(mountEl, options = {}) {
     fill($('sheet-list'));
   }
 
-  async function showLibrary(list) {
+  /**
+   * The library, along the header.
+   *
+   * It was a panel over the canvas, which is the shape for a thing you open,
+   * read and shut again. A shelf is not that: it is looked along, and what is
+   * on it should be visible at the same time as the patch it would replace.
+   * Filled once, the first time the tab is asked for — the index is fetched
+   * for the opening patch anyway, so by then it is usually in hand already.
+   */
+  async function fillLibrary(panel) {
+    panel.textContent = '';
+    const note = (text) => Object.assign(document.createElement('p'), {
+      className: 'library__note',
+      textContent: text,
+    });
+
+    let entries;
     try {
-      const entries = await loadLibrary();
-      if (!entries.length) {
-        list.append(Object.assign(document.createElement('p'), {
-          className: 'sheet__note',
-          textContent: 'Nothing in the library yet.',
-        }));
-        return;
-      }
-      for (const entry of entries) {
-        const item = document.createElement('button');
-        item.className = 'sheet__item';
-        item.append(Object.assign(document.createElement('b'), { textContent: entry.name }));
-        if (entry.note) {
-          item.append(Object.assign(document.createElement('span'), { textContent: entry.note }));
-        }
-        item.addEventListener('click', () => {
-          openLibraryPatch(entry).catch(() => {
-            setStatus(`${entry.name} could not be opened.`, 'Sorry:');
-            closeSheet();
-          });
-        });
-        list.append(item);
-      }
-      list.firstChild?.focus();
+      entries = await loadLibrary();
     } catch {
-      list.textContent = '';
-      list.append(Object.assign(document.createElement('p'), {
-        className: 'sheet__note',
-        textContent: 'The library could not be read. Gridi has to be served over http, not opened as a file.',
-      }));
+      panel.append(note('The library could not be read. Gridi has to be served over http, not opened as a file.'));
+      return;
+    }
+
+    if (!entries.length) {
+      panel.append(note('Nothing in the library yet.'));
+      return;
+    }
+
+    for (const entry of entries) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'library__item';
+      item.append(Object.assign(document.createElement('b'), { textContent: entry.name }));
+      if (entry.note) {
+        item.append(Object.assign(document.createElement('span'), { textContent: entry.note }));
+        // The blurb is clamped to two lines in the strip; the whole of it is
+        // one hover away.
+        item.title = entry.note;
+      }
+      item.addEventListener('click', () => {
+        openLibraryPatch(entry).catch(() => {
+          setStatus(`${entry.name} could not be opened.`, 'Sorry:');
+        });
+      });
+      panel.append(item);
     }
   }
-
-  $('library').addEventListener('click', () => toggleSheet('library', showLibrary));
 
   /* ------------------------------------------------------------- soundfont */
 
@@ -1341,8 +1353,11 @@ export function initGridi(mountEl, options = {}) {
    */
   const TABS = [
     ['tab-project', 'panel-project'],
+    ['tab-library', 'panel-library'],
     ['tab-midi', 'panel-midi'],
   ];
+
+  let libraryShown = false;
 
   function showTab(id) {
     for (const [tab, panel] of TABS) {
@@ -1350,6 +1365,10 @@ export function initGridi(mountEl, options = {}) {
       $(tab).setAttribute('aria-selected', String(on));
       $(tab).tabIndex = on ? 0 : -1;
       $(panel).hidden = !on;
+    }
+    if (id === 'tab-library' && !libraryShown) {
+      libraryShown = true;
+      fillLibrary($('panel-library'));
     }
   }
 

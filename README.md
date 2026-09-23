@@ -233,11 +233,15 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
 ## library
 
-**Library**, on the transport strip, lists the patches that ship with Gridi. Picking one
-opens it like any other patch, undo included. Gridi opens on Bossa Nova out of
-the same library, so a first visit arrives at a patch doing the thing the app
-is for rather than at an empty grid. **Demo** in the rail is the other one: a
-patch of built-in voices, which needs no SoundFont to make a sound.
+**Library** is the second tab in the header: the patches that ship with Gridi,
+laid along it with what each one is. Picking one opens it like any other patch,
+undo included — and the strip stays where it is, so the shelf is still there to
+try the next one from.
+
+Gridi opens on Bossa Nova out of that library, so a first visit arrives at a
+patch doing the thing the app is for rather than at an empty grid. **Demo**, on
+the transport strip, is the other starting point: a patch of built-in voices,
+which needs no SoundFont to make a sound.
 
 | Patch | BPM | What it is |
 | --- | --- | --- |
@@ -387,7 +391,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Place a node | Click a type in the left rail, then click the grid. Shift keeps placing. |
 | Show the node names | The chevron beside **nodes**. The rail keeps to its colours until then, and remembers which way it was left. |
 | Fold the inspector away | The chevron in its head |
-| Project settings, MIDI ports | The two tabs in the header |
+| Project settings, the library, MIDI ports | The three tabs in the header |
 | Patch two nodes | Drag from a node's right edge onto another node |
 | Select | Click a node or a line |
 | Move a node | Drag it |
@@ -396,7 +400,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Fit to patch | F |
 | Set what a cell is worth | Grid, in the project tab |
 | Open a patch | Drop the file on the canvas, or paste its text |
-| Open a patch that ships with Gridi | Library, on the transport strip |
+| Open a patch that ships with Gridi | The library tab |
 | Choose what each channel plays | Sounds, on the transport strip |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |

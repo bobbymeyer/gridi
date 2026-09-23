@@ -170,6 +170,46 @@ button { cursor: pointer; background: none; border: 0; }
   flex-wrap: wrap;
 }
 
+/* The library strip: one patch per cell, its blurb under its name, and the
+   rules between them separating them the way the settings' do. */
+.library__item {
+  display: block;
+  max-width: 232px;
+  padding: 7px 11px;
+  text-align: left;
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.library__item:hover { background: var(--paper-2); }
+
+.library__item b {
+  display: block;
+  font: 700 12px/1.1 var(--font);
+  letter-spacing: 0.01em;
+}
+
+/* Two lines of it here; the whole of it on hover. */
+.library__item span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 3px;
+  font: var(--micro);
+  line-height: 1.45;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+.library__note {
+  padding: 10px 12px;
+  font: var(--micro);
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
 .head__mark {
   display: flex;
   flex-direction: column;
@@ -211,21 +251,33 @@ button { cursor: pointer; background: none; border: 0; }
 /* Transport ---------------------------------------------------------------- */
 
 /* The strip between the settings and the grid: what is running, on the left,
-   and what it is running, on the right. */
+   and what it is running, on the right. A rule with controls on it rather than
+   a panel — 24px is the height of a button, and the rest is the canvas's. */
 .transport {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
+  min-height: 30px;
   border-bottom: var(--rule-w) solid var(--rule);
   background: var(--paper);
 }
 
+/* On the line, not stacked under a label: the strip is one control tall. */
+.transport .mod {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 12px;
+}
+
+.transport .readout { font: 700 17px/1 var(--font); }
+
 .patch {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
-  padding: 7px 11px;
+  padding: 0 10px;
   border-left: 1px solid var(--rule);
 }
 
@@ -240,29 +292,29 @@ button { cursor: pointer; background: none; border: 0; }
 .btn-play {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  font: 700 15px/1 var(--font);
+  gap: 8px;
+  padding: 0 14px;
+  font: 700 12px/1 var(--font);
   letter-spacing: 0.08em;
   background: var(--ink);
   color: var(--paper);
-  min-width: 132px;
+  min-width: 92px;
 }
 
 .btn-play::before {
   content: "";
   width: 0;
   height: 0;
-  border-left: 13px solid currentColor;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
+  border-left: 10px solid currentColor;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
 }
 
 .btn-play[aria-pressed="true"] { background: var(--red); color: #fff; }
 .btn-play[aria-pressed="true"]::before {
   border: 0;
-  width: 12px;
-  height: 13px;
+  width: 9px;
+  height: 10px;
   background: currentColor;
 }
 
@@ -664,25 +716,6 @@ input[type="checkbox"]:checked::after {
 }
 
 .sheet__body { max-height: 320px; overflow-y: auto; }
-
-.sheet__item {
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  border: 0;
-  border-bottom: 1px solid var(--grid-module);
-  background: none;
-  color: var(--ink);
-  font-family: var(--font);
-  text-align: left;
-  cursor: pointer;
-}
-
-.sheet__item:last-child { border-bottom: 0; }
-.sheet__item:hover, .sheet__item:focus-visible { background: var(--yellow); }
-.sheet__item b { display: block; font-size: 15px; font-weight: 700; }
-.sheet__item span { display: block; margin-top: 3px; font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
-.sheet__item:hover span, .sheet__item:focus-visible span { color: var(--ink); }
 
 .sheet__note { padding: 10px 12px; font: var(--micro); letter-spacing: var(--track); color: var(--ink-soft); }
 
@@ -1108,8 +1141,8 @@ input[type="checkbox"]:checked::after {
   }
 
   .mod__row { flex-wrap: wrap; }
-  .readout { font-size: 20px; }
-  .btn-play { min-width: 96px; padding: 0 14px; font-size: 13px; }
+  .readout { font-size: 17px; }
+  .btn-play { min-width: 80px; padding: 0 11px; }
   .chip { grid-template-columns: 20px 1fr; }
   .chip__body { padding: 6px 7px; }
   .chip__role { display: none; }
@@ -1137,4 +1170,9 @@ input[type="checkbox"]:checked::after {
   /* The footer clips what it cannot fit; closing its gaps up is most of the
      difference between clipping the node count and keeping it. */
   .foot { gap: 10px; padding: 0 8px; }
+
+  /* Five patches across a phone is five rows of blurb. The names fit on two
+     lines between them, and the blurbs are a tap-and-hold away. */
+  .library__item { padding: 6px 9px; }
+  .library__item span { display: none; }
 }

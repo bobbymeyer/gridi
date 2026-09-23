@@ -27,13 +27,15 @@ const MARK = `    <div class="head__mark">
 `;
 
 /**
- * The header is two tabs over one row of controls.
+ * The header is three tabs over one row of controls.
  *
  * Tempo, grid and key belong to the patch. The ports belong to the machine the
  * patch is being played on, and change when the room changes rather than when
  * the piece does. Laid out across one long header the two kinds of setting
  * looked like one kind; a tab each says which is which, and hands the canvas
- * back the height the second row was taking.
+ * back the height the second row was taking. The library is the third: a shelf
+ * of patches is a thing to look along, which a panel over the canvas was the
+ * wrong shape for.
  *
  * The transport left the header with them. Play and the bar count belong
  * against the thing they are running — the grid — rather than up in the
@@ -45,6 +47,7 @@ const BODY = `
   <header class="head">
     <div class="tabs" role="tablist" aria-label="Settings">
       <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
+      <button class="tab" type="button" id="tab-library" role="tab" aria-selected="false" aria-controls="panel-library" tabindex="-1">library</button>
       <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
     </div>
 
@@ -74,6 +77,8 @@ const BODY = `
           </div>
         </div>
       </div>
+
+      <div class="panel panel--library" id="panel-library" role="tabpanel" aria-labelledby="tab-library" hidden></div>
 
       <div class="panel" id="panel-midi" role="tabpanel" aria-labelledby="tab-midi" hidden>
         <div class="mod mod--grow">
@@ -122,7 +127,6 @@ const BODY = `
       <input class="field patch__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
       <div class="patch__buttons">
         <button class="btn" id="new">new</button>
-        <button class="btn" id="library">library</button>
         <button class="btn" id="sounds">sounds</button>
         <button class="btn" id="demo">demo</button>
         <button class="btn" id="export">save</button>
@@ -153,7 +157,7 @@ const BODY = `
       <div class="stage__placing" id="placing" hidden></div>
       <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
         <div class="sheet__head">
-          <b id="sheet-title">library</b>
+          <b id="sheet-title">sounds</b>
           <button class="sheet__close" id="sheet-close" aria-label="Close">&times;</button>
         </div>
         <div class="sheet__body" id="sheet-list"></div>
