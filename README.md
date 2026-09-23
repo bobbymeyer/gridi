@@ -49,6 +49,19 @@ though — a `*` reset, rules on `html, body` — so mount it in a shadow root a
 let the two documents keep their own styling. `tests/embed.html` does exactly
 that, and is the check that neither side reaches the other.
 
+Give the mount a height. gridi fills it, and lays itself out to the width it
+finds there rather than the window's, so the same copy works in a column of
+text and on a phone.
+
+Embedded, gridi waits to be clicked into before it answers the keyboard, the
+wheel or a paste, and lets go the moment you click out — a reader is reading,
+and a figure that swallows space, ⌘S and the scroll wheel has taken the page
+over. On its own page it takes all three from the start.
+
+The SoundFont it ships with is thirty-two megabytes, and it is fetched on the
+first press of play rather than on load, so a page that merely mentions gridi
+costs its readers nothing.
+
 Open `http://localhost:8080/tests/audio-check.html` for the synth checks, which
 need a browser.
 
@@ -220,8 +233,15 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
 ## library
 
-**Library** in the left rail lists the patches that ship with Gridi. Picking one
-opens it like any other patch, undo included.
+**Library** is the second tab in the header: the patches that ship with Gridi,
+laid along it with what each one is. Picking one opens it like any other patch,
+undo included — and the strip stays where it is, so the shelf is still there to
+try the next one from.
+
+Gridi opens on Bossa Nova out of that library, so a first visit arrives at a
+patch doing the thing the app is for rather than at an empty grid. **Demo**, on
+the transport strip, is the other starting point: a patch of built-in voices,
+which needs no SoundFont to make a sound.
 
 | Patch | BPM | What it is |
 | --- | --- | --- |
@@ -253,8 +273,10 @@ node tools/build.mjs
 
 ## soundfont
 
-Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and loads it
-on first run. 261 instruments and 13 drum kits in 32MB.
+Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and fetches
+it on the first press of play. 261 instruments and 13 drum kits in 32MB — too
+much to spend on somebody who has not asked to hear anything yet, which is what
+loading it on boot spent.
 
 <https://www.schristiancollins.com/generaluser>
 
@@ -287,7 +309,7 @@ That is a click track for building a patch, not an instrument.
 
 ## sounds
 
-**Sounds** in the left rail lists the channels a patch plays on, worked out
+**Sounds**, on the transport strip, lists the channels a patch plays on, worked out
 from the graph, and sets a General MIDI program for each. Gridi sends them as
 program changes 50ms before the first note, so a receiving module is on the
 right sound before it has anything to play.
@@ -315,8 +337,8 @@ Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
 
 ## patches
 
-A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
-rail; **Save** names the file after it.
+A patch is one JSON file: nodes, lines, tempo, grid, key. Name it on the
+transport strip; **Save** names the file after it.
 
 | To open one | How |
 | --- | --- |
@@ -336,16 +358,19 @@ machine binds its own devices.
 
 ## MIDI
 
-| Control | Where | Does |
-| --- | --- | --- |
-| Enable MIDI | header | Requests access. Needs a user gesture and a secure context. |
-| A B C D | header | Picks which output slot the device list and Clk apply to |
-| Device list | header | Binds a device to that slot |
-| Clk A–D | header | Whether that output receives clock |
-| Clock | header | Whether clock is sent at all |
-| Panic | header | All notes off on every output |
-| MIDI in device | header | The port clock and played notes arrive on |
-| Sync | header | Follow the incoming clock instead of the project tempo |
+Every control below is on the **MIDI in & out** tab, the second of the two in
+the header.
+
+| Control | Does |
+| --- | --- |
+| Enable MIDI | Requests access. Needs a user gesture and a secure context. |
+| A B C D | Picks which output slot the device list and Clk apply to |
+| Device list | Binds a device to that slot |
+| Clk A–D | Whether that output receives clock |
+| Clock | Whether clock is sent at all |
+| Panic | All notes off on every output |
+| MIDI in device | The port clock and played notes arrive on |
+| Sync | Follow the incoming clock instead of the project tempo |
 
 Outputs are named slots. A patch stores the slot letter; each machine binds its
 own devices, remembered between sessions.
@@ -364,16 +389,19 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | --- | --- |
 | Play / stop | Space, or Play |
 | Place a node | Click a type in the left rail, then click the grid. Shift keeps placing. |
+| Show the node names | The chevron beside **nodes**. The rail keeps to its colours until then, and remembers which way it was left. |
+| Fold the inspector away | The chevron in its head |
+| Project settings, the library, MIDI ports | The three tabs in the header |
 | Patch two nodes | Drag from a node's right edge onto another node |
 | Select | Click a node or a line |
 | Move a node | Drag it |
 | Pan | Drag empty grid, or alt-drag |
 | Zoom | Wheel |
 | Fit to patch | F |
-| Set what a cell is worth | Grid, in the header |
+| Set what a cell is worth | Grid, in the project tab |
 | Open a patch | Drop the file on the canvas, or paste its text |
-| Open a patch that ships with Gridi | Library, in the left rail |
-| Choose what each channel plays | Sounds, in the left rail |
+| Open a patch that ships with Gridi | The library tab |
+| Choose what each channel plays | Sounds, on the transport strip |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
@@ -382,8 +410,12 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Save patch | ⌘S, or Save |
 | Cancel | Escape |
 
-New, Demo, Save, Open and the theme toggle are in the left rail. Patches
-autosave to local storage.
+New, Demo, Save, Open and the theme toggle sit with the patch name on the
+transport strip, the line between the settings and the grid. Patches autosave
+to local storage.
+
+Embedded in someone else's page, every key and the wheel above waits until the
+app has been clicked into, and stops again when it is clicked out of.
 
 ## limits
 
@@ -438,7 +470,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 
 ### share a patch
 
-1. Give it a name in the left rail.
+1. Give it a name on the transport strip.
 2. **Save**. The file lands in your downloads, named after the patch.
 3. Send the file, or its text.
 4. They drop it on their canvas, or paste it there.
@@ -465,7 +497,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 335 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 336 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
