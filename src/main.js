@@ -447,6 +447,10 @@ export function initGridi(mountEl, options = {}) {
   function select(kind, id) {
     state.selection.kind = kind;
     state.selection.id = id;
+    // Picking something is asking what it is, and a folded inspector answers
+    // with a strip of type down the edge. Deselecting leaves it as it is:
+    // clicking empty grid is not a request to give the canvas its width back.
+    if (kind !== 'none' && mount.dataset.pane === 'min') setPane(true);
     inspector.show(state.patch, state.selection);
     syncHeader();
   }
@@ -514,6 +518,12 @@ export function initGridi(mountEl, options = {}) {
     canvas.dataset.pointer = '';
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(e.pointerId);
+    // Once somebody is working on the grid, nothing else may move the view.
+    // The fit that follows the canvas is for the seconds before that — an
+    // embed laid out twice while its stylesheet arrives — and a click that
+    // opens the inspector would otherwise refit the patch under the pointer
+    // that clicked it.
+    viewIsTheirs = true;
     const world = pointerWorld(e);
 
     if (e.button === 1 || e.altKey) {
