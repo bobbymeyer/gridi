@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>gridi — grid pulse sequencer</title>
 <meta name="description" content="A spatial sequencer for generative MIDI and in-browser synthesis. Place nodes on a grid, patch them with lines, and let pulses do the rest.">
+<script>
+  // Every path in this page is relative to its own address, which must end in
+  // a slash. Opened without one -- /gridi behind a proxy, say -- they would
+  // all miss, so add it before anything else loads.
+  if (!/\/$|\.[a-z0-9]+$/i.test(location.pathname)) {
+    location.replace(location.pathname + "/" + location.search + location.hash);
+  }
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e1251b'/%3E%3Crect x='6' y='6' width='8' height='8' fill='%23fff'/%3E%3Crect x='18' y='18' width='8' height='8' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles/app.css">
 </head>
