@@ -51,7 +51,9 @@ export function buildPalette(container, { onPick, getActive }) {
     const btn = el('button', 'chip');
     btn.type = 'button';
     btn.setAttribute('aria-pressed', 'false');
-    btn.title = meta.blurb;
+    // The rail collapses to these swatches, so the title carries the name as
+    // well as the blurb: a glyph on its own does not say what it is called.
+    btn.title = `${meta.label} — ${meta.blurb}`;
 
     const swatch = el('div', 'chip__swatch');
     swatch.style.background = `var(--${meta.color})`;

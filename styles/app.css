@@ -26,8 +26,16 @@
   --track: 0.14em;
 }
 
+/* The third selector is for gridi's own page, where the attribute goes on
+   <html> and the app is a `.gridi-root` inside it: without it the light block
+   above — which the mount matches too — redefines the tokens on the app itself
+   and wins over anything it would have inherited, and dark mode reaches the
+   canvas and nothing around it. The rule cannot cross into an embed's shadow
+   root, which is exactly right: there the mount carries its own attribute and
+   the host page's theme is none of gridi's business. */
 :root[data-theme="dark"],
-.gridi-root[data-theme="dark"] {
+.gridi-root[data-theme="dark"],
+[data-theme="dark"] .gridi-root {
   --paper: #0f0f0f;
   --paper-2: #1a1a1a;
   --ink: #f5f5f5;
@@ -53,7 +61,13 @@ html, body {
   overflow: hidden;
 }
 
-body {
+/* The mount as well as the page: colour and font are inherited properties, and
+   inheritance crosses a shadow boundary even though nothing else does. With
+   only `body` here an embedded copy took its text colour from whatever page it
+   was sitting in — which is how the fields came to be set in the host's black
+   on gridi's near-black, and to be legible only by luck anywhere else. */
+body,
+.gridi-root {
   font: 400 12px/1.4 var(--font);
   color: var(--ink);
   background: var(--paper);
@@ -84,20 +98,76 @@ button { cursor: pointer; background: none; border: 0; }
    down. The layout has to answer to the room the app actually has, which
    embedded is never the viewport's. */
 .gridi-root {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   container-type: inline-size;
+
+  /* The two rails, as values, because both of them collapse and the widths
+     have to be answerable from three places at once: the layout below, the
+     narrow steps at the end of this file, and whichever of them is shut. */
+  --rail-w: 178px;
+  --pane-w: 272px;
+}
+
+.head,
+.transport,
+.foot { flex: 0 0 auto; }
+
+/* Off-screen but read out: the disclosure buttons are a chevron and nothing
+   else, and a chevron does not say what it opens. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- head --- */
 
 .head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  border-bottom: var(--rule-w) solid var(--rule);
+  background: var(--paper);
+}
+
+/* Both rows of the header, so the lockup is the height of what it introduces.
+   Embedded there is no lockup and the column collapses to nothing. */
+.head__mark { grid-area: 1 / 1 / 3 / 2; }
+
+.tabs {
+  grid-column: 2;
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+}
+
+.tab {
+  padding: 8px 14px 7px;
+  font: var(--micro);
+  letter-spacing: var(--track);
+  color: var(--ink-soft);
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.tab:hover { background: var(--paper-2); }
+
+.tab[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.panels { grid-column: 2; }
+
+.panel {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  border-bottom: var(--rule-w) solid var(--rule);
-  background: var(--paper);
 }
 
 .head__mark {
@@ -140,10 +210,31 @@ button { cursor: pointer; background: none; border: 0; }
 
 /* Transport ---------------------------------------------------------------- */
 
+/* The strip between the settings and the grid: what is running, on the left,
+   and what it is running, on the right. */
 .transport {
   display: flex;
   align-items: stretch;
-  border-right: var(--rule-w) solid var(--rule);
+  flex-wrap: wrap;
+  border-bottom: var(--rule-w) solid var(--rule);
+  background: var(--paper);
+}
+
+.patch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 7px 11px;
+  border-left: 1px solid var(--rule);
+}
+
+.patch__name { width: 124px; }
+
+.patch__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .btn-play {
@@ -345,8 +436,13 @@ input[type="checkbox"]:checked::after {
 /* --------------------------------------------------------------- body ---- */
 
 .body {
+  flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 178px 1fr 272px;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--pane-w);
+  /* An implicit row is sized by its content, which for a rail of twelve chips
+     is taller than the shell has to give: the row has to be told to take the
+     height it is in and let its items scroll inside it. */
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -361,13 +457,55 @@ input[type="checkbox"]:checked::after {
 .rail__head,
 .pane__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  padding: 9px 12px 8px;
+  padding: 6px 10px 6px 7px;
   border-bottom: var(--rule-w) solid var(--rule);
   font: var(--micro);
   letter-spacing: var(--track);
+}
+
+/* Whatever is selected sits at the far end of the inspector's own head. */
+.pane__head #sel-kind { margin-left: auto; }
+
+/* A chevron in a box: the one control that opens a rail and shuts it again.
+   Down is open and right is shut, the way a disclosure triangle has always
+   read; the inspector's points at the edge it folds against instead. */
+.disclose {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.disclose:hover { background: var(--paper-2); }
+
+.chev {
+  width: 6px;
+  height: 6px;
+  margin: -2px 0 0 -2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.disclose[aria-expanded="true"] .chev {
+  margin: -2px 0 0 0;
+  transform: rotate(45deg);
+}
+
+.disclose--pane[aria-expanded="true"] .chev {
+  margin: -2px 0 0 -2px;
+  transform: rotate(-45deg);
+}
+
+.disclose--pane[aria-expanded="false"] .chev {
+  margin: -2px 0 0 2px;
+  transform: rotate(135deg);
 }
 
 .rail__head b, .pane__head b { font-weight: 700; color: var(--ink); }
@@ -409,25 +547,6 @@ input[type="checkbox"]:checked::after {
   margin-top: 3px;
 }
 
-.rail__foot {
-  padding: 12px;
-  border-top: 1px solid var(--rule);
-}
-
-.rail__name {
-  width: 100%;
-  margin-top: 7px;
-}
-
-.rail__buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-top: 7px;
-}
-
-.rail__buttons .btn:last-child { grid-column: 1 / -1; }
-
 .rail__note {
   padding: 10px 12px;
   font: var(--micro);
@@ -442,9 +561,13 @@ input[type="checkbox"]:checked::after {
 #canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 /* The grid takes focus on a click, which is how an embedded copy is handed the
-   keyboard. Say so, once, to whoever tabbed here. */
+   keyboard. Say so to whoever tabbed here, and to nobody who clicked: the
+   click marks the canvas on its way in. */
 #canvas:focus { outline: none; }
-#canvas:focus-visible { outline: var(--rule-w) solid var(--blue); outline-offset: -2px; }
+#canvas:focus-visible:not([data-pointer]) {
+  outline: var(--rule-w) solid var(--blue);
+  outline-offset: -2px;
+}
 
 .stage__hint {
   position: absolute;
@@ -875,11 +998,56 @@ input[type="checkbox"]:checked::after {
 
 .warn[hidden] { display: none; }
 
+/* ------------------------------------------------------- shut and open --- */
+
+/* The palette, down to its colours.
+   A node type is a colour and a glyph before it is a word — the glyph is what
+   is drawn on the node itself — so the rail can say all of it in 44px and hand
+   the rest to the canvas. The names come back with the chevron, and which way
+   it was left is remembered. */
+
+.gridi-root[data-rail="icons"] { --rail-w: 44px; }
+
+.gridi-root[data-rail="icons"] .rail__label,
+.gridi-root[data-rail="icons"] .rail__note,
+.gridi-root[data-rail="icons"] .chip__body { display: none; }
+
+.gridi-root[data-rail="icons"] .rail__head {
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.gridi-root[data-rail="icons"] .chip {
+  grid-template-columns: 1fr;
+  height: 36px;
+}
+
+.gridi-root[data-rail="icons"] .chip__swatch { border-right: 0; }
+
+/* The inspector, folded against the right edge.
+   Its head turns on its side and stays: something has to be left to click, and
+   a strip of type down the edge says what will come back. */
+
+.gridi-root[data-pane="min"] { --pane-w: 30px; }
+
+.gridi-root[data-pane="min"] .pane__body,
+.gridi-root[data-pane="min"] .pane__actions,
+.gridi-root[data-pane="min"] .pane__head #sel-kind { display: none; }
+
+.gridi-root[data-pane="min"] .pane__head {
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 3px;
+  border-bottom: 0;
+}
+
+.gridi-root[data-pane="min"] .pane__label { writing-mode: vertical-rl; }
+
 /* Narrower, in three steps, and the stage is what each of them protects: the
    canvas is the app, and every pixel the chrome gives back goes to it. */
 
 @container (max-width: 1080px) {
-  .body { grid-template-columns: 132px 1fr 236px; }
+  .gridi-root { --rail-w: 132px; --pane-w: 236px; }
 }
 
 /* Two rails and a canvas do not fit across a tablet, let alone a phone: at
@@ -888,7 +1056,7 @@ input[type="checkbox"]:checked::after {
    the thing it inspects, so it goes there. */
 @container (max-width: 860px) {
   .body {
-    grid-template-columns: 132px minmax(0, 1fr);
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
     /* What the inspector asks for, up to two fifths of the body: a row of its
        own would stand half empty on a bare selection and swallow the stage on
        a voice. `fit-content` is the one that does both. */
@@ -900,13 +1068,35 @@ input[type="checkbox"]:checked::after {
     border-left: 0;
     border-top: var(--rule-w) solid var(--rule);
   }
+
+  /* Folded, the inspector is a bar along the bottom rather than a strip down
+     the side, so its head stays the way round it started. */
+  .gridi-root[data-pane="min"] .pane__head {
+    flex-direction: row;
+    padding: 6px 10px 6px 7px;
+  }
+
+  .gridi-root[data-pane="min"] .pane__label { writing-mode: horizontal-tb; }
+  .gridi-root[data-pane="min"] .pane__head #sel-kind { display: block; }
+
+  /* Folded downwards, so it reads like the rail's: down is open, right is
+     shut, rather than pointing at an edge it is no longer against. */
+  .disclose--pane[aria-expanded="true"] .chev {
+    margin: -2px 0 0 0;
+    transform: rotate(45deg);
+  }
+
+  .disclose--pane[aria-expanded="false"] .chev {
+    margin: -2px 0 0 -2px;
+    transform: rotate(-45deg);
+  }
 }
 
 /* A phone. The palette keeps its colours and its names and loses its roles;
    the header wraps rather than running off the side; the pointer hints along
    the bottom of the stage are describing a mouse that is not there. */
 @container (max-width: 560px) {
-  .body { grid-template-columns: 104px minmax(0, 1fr); }
+  .gridi-root { --rail-w: 104px; }
 
   /* Label beside control rather than above it. Stacked, the header took two
      thirds of a phone-sized embed and left the canvas a letterbox. */
@@ -929,6 +1119,22 @@ input[type="checkbox"]:checked::after {
      tidy rows instead of a column of one button each. */
   .mod--grow { flex-basis: 100%; }
 
-  /* "click to place" is instruction for a mouse, and the rail is 104px wide. */
-  .rail__head span { display: none; }
+  /* The patch and what can be done to it take the whole line, and wrap as one
+     run of controls: `display: contents` hands the buttons to the same flex
+     box as the name, so they fill each line instead of each taking one. */
+  .patch {
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    width: 100%;
+  }
+
+  .patch__buttons { display: contents; }
+  .patch__name { flex: 0 1 118px; width: auto; }
+
+  /* The footer clips what it cannot fit; closing its gaps up is most of the
+     difference between clipping the node count and keeping it. */
+  .foot { gap: 10px; padding: 0 8px; }
 }

@@ -508,6 +508,10 @@ export function initGridi(mountEl, options = {}) {
   canvas.addEventListener('pointerdown', (e) => {
     // Clicking the grid is how the app is asked for the keyboard when it is
     // embedded, and how tabbing back to it lands somewhere sensible otherwise.
+    // The mark says the focus came from a pointer: a script calling focus()
+    // counts as :focus-visible in Chromium, and a blue ring around the canvas
+    // on every click is not what that ring is for.
+    canvas.dataset.pointer = '';
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(e.pointerId);
     const world = pointerWorld(e);
@@ -567,6 +571,10 @@ export function initGridi(mountEl, options = {}) {
 
     select('none', null);
     state.drag = { kind: 'pan', startX: e.clientX, startY: e.clientY, view: { ...state.patch.view } };
+  });
+
+  canvas.addEventListener('blur', () => {
+    delete canvas.dataset.pointer;
   });
 
   canvas.addEventListener('pointermove', (e) => {
@@ -1305,6 +1313,89 @@ export function initGridi(mountEl, options = {}) {
 
   $('volume').addEventListener('input', () => audio.setVolume(Number($('volume').value)));
 
+  /* --------------------------------------------------------------- chrome */
+
+  const remember = (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* a browser with storage switched off still runs, it just forgets */
+    }
+  };
+
+  const recall = (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * The header's two tabs.
+   *
+   * What a patch is — its tempo, what a cell is worth, what key it is in — is
+   * saved in the file and travels with it. What it is being played on is not:
+   * the ports belong to the desk, and change when the desk does. They had been
+   * laid out along one header as though they were the same kind of thing.
+   */
+  const TABS = [
+    ['tab-project', 'panel-project'],
+    ['tab-midi', 'panel-midi'],
+  ];
+
+  function showTab(id) {
+    for (const [tab, panel] of TABS) {
+      const on = tab === id;
+      $(tab).setAttribute('aria-selected', String(on));
+      $(tab).tabIndex = on ? 0 : -1;
+      $(panel).hidden = !on;
+    }
+  }
+
+  for (const [tab] of TABS) {
+    $(tab).addEventListener('click', () => showTab(tab));
+    // A tab strip is one stop in the tab order, arrows between the tabs.
+    $(tab).addEventListener('keydown', (e) => {
+      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      const i = TABS.findIndex(([t]) => t === tab);
+      const [next] = TABS[(i + step + TABS.length) % TABS.length];
+      showTab(next);
+      $(next).focus();
+    });
+  }
+
+  /**
+   * The palette, open or down to its colours.
+   *
+   * Shut is the resting state. A node type is a colour and a glyph before it is
+   * a word — the same glyph that is drawn on the node itself — so the rail can
+   * say all of it in 44px, and the difference goes to the canvas. Whichever way
+   * it was left is what it opens as.
+   */
+  const RAIL_KEY = ns + 'gridi.rail';
+  const PANE_KEY = ns + 'gridi.pane';
+
+  function setRail(open, { keep = true } = {}) {
+    mount.dataset.rail = open ? 'labels' : 'icons';
+    $('rail-toggle').setAttribute('aria-expanded', String(open));
+    $('rail-toggle').title = open ? 'Hide the node names' : 'Show the node names';
+    if (keep) remember(RAIL_KEY, open ? 'labels' : 'icons');
+  }
+
+  /** The inspector, folded against the edge it lives on, or out again. */
+  function setPane(open, { keep = true } = {}) {
+    mount.dataset.pane = open ? 'open' : 'min';
+    $('pane-toggle').setAttribute('aria-expanded', String(open));
+    $('pane-toggle').title = open ? 'Minimise the inspector' : 'Open the inspector';
+    if (keep) remember(PANE_KEY, open ? 'open' : 'min');
+  }
+
+  $('rail-toggle').addEventListener('click', () => setRail(mount.dataset.rail !== 'labels'));
+  $('pane-toggle').addEventListener('click', () => setPane(mount.dataset.pane === 'min'));
+
   $('theme').addEventListener('click', () => {
     const next = themeHost.dataset.theme === 'dark' ? 'light' : 'dark';
     themeHost.dataset.theme = next;
@@ -1578,6 +1669,12 @@ export function initGridi(mountEl, options = {}) {
       /* ignore */
     }
     renderer.readColors();
+
+    // Before the first measurement of the canvas, because both of these change
+    // how much of the width it gets.
+    setRail(recall(RAIL_KEY) === 'labels', { keep: false });
+    setPane(recall(PANE_KEY) !== 'min', { keep: false });
+    showTab('tab-project');
 
     populateKeySelects();
     // The font from last time, if there was one. Nothing waits on it: a patch is

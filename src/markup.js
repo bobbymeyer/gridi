@@ -16,9 +16,8 @@
 /**
  * The lockup: the name and the strapline, and nothing that does anything.
  *
- * All the embed drops. The rest of the header is the transport — play, tempo,
- * grid, key, the MIDI rows — and dropping that would be dropping the
- * sequencer.
+ * All the embed drops, because the page it is sitting in has said what it is
+ * showing already. Everything else in the header stays.
  */
 const MARK = `    <div class="head__mark">
       <b>gridi</b>
@@ -27,62 +26,77 @@ const MARK = `    <div class="head__mark">
 
 `;
 
+/**
+ * The header is two tabs over one row of controls.
+ *
+ * Tempo, grid and key belong to the patch. The ports belong to the machine the
+ * patch is being played on, and change when the room changes rather than when
+ * the piece does. Laid out across one long header the two kinds of setting
+ * looked like one kind; a tab each says which is which, and hands the canvas
+ * back the height the second row was taking.
+ *
+ * The transport left the header with them. Play and the bar count belong
+ * against the thing they are running — the grid — rather than up in the
+ * settings, so they sit on their own rule directly above it, with the patch
+ * and what can be done to it at the other end of the same line.
+ */
 const BODY = `
 
   <header class="head">
-    <div class="transport">
-      <button class="btn-play" id="play" aria-pressed="false">play</button>
+    <div class="tabs" role="tablist" aria-label="Settings">
+      <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
+      <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
     </div>
 
-    <div class="mod">
-      <span class="micro">position</span>
-      <div class="readout"><span id="position">001.1</span></div>
-    </div>
+    <div class="panels">
+      <div class="panel" id="panel-project" role="tabpanel" aria-labelledby="tab-project">
+        <div class="mod">
+          <span class="micro">tempo</span>
+          <div class="mod__row">
+            <input class="bpm-input" id="bpm" type="number" min="20" max="300" step="1" value="104" aria-label="Beats per minute">
+            <span class="micro">bpm</span>
+          </div>
+        </div>
 
-    <div class="mod">
-      <span class="micro">tempo</span>
-      <div class="mod__row">
-        <input class="bpm-input" id="bpm" type="number" min="20" max="300" step="1" value="104" aria-label="Beats per minute">
-        <span class="micro">bpm</span>
+        <div class="mod">
+          <span class="micro">grid</span>
+          <div class="mod__row">
+            <select class="field" id="grid" aria-label="Note value of one grid cell" title="What one grid cell is worth: how long a pulse takes to cross it"></select>
+            <span class="micro">per cell</span>
+          </div>
+        </div>
+
+        <div class="mod">
+          <span class="micro">project key</span>
+          <div class="mod__row">
+            <select class="field" id="root" aria-label="Key"></select>
+            <select class="field" id="scale" aria-label="Scale"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-midi" role="tabpanel" aria-labelledby="tab-midi" hidden>
+        <div class="mod mod--grow">
+          <span class="micro">MIDI outputs</span>
+          <div class="mod__row">
+            <button class="btn" id="midi-enable">enable MIDI</button>
+            <div class="seg" id="slot-picker" role="group" aria-label="Output slot"></div>
+            <select class="field" id="midi-out" aria-label="Device for the selected output" style="max-width:130px" disabled></select>
+            <button class="btn" id="slot-clock" aria-pressed="true" title="Send clock to this output">clk A</button>
+            <button class="btn" id="clock-out" aria-pressed="true" title="Send MIDI clock, start and stop at all, so receiving gear follows Gridi's tempo">clock</button>
+            <button class="btn btn--red" id="panic" title="All notes off">panic</button>
+          </div>
+        </div>
+
+        <div class="mod">
+          <span class="micro">MIDI in</span>
+          <div class="mod__row">
+            <select class="field" id="midi-in" aria-label="MIDI input device" style="max-width:120px" disabled></select>
+            <button class="btn" id="sync-ext" aria-pressed="false" title="Follow the incoming MIDI clock instead of the project tempo">sync</button>
+          </div>
+        </div>
       </div>
     </div>
-
-    <div class="mod">
-      <span class="micro">grid</span>
-      <div class="mod__row">
-        <select class="field" id="grid" aria-label="Note value of one grid cell" title="What one grid cell is worth: how long a pulse takes to cross it"></select>
-        <span class="micro">per cell</span>
-      </div>
-    </div>
-
-    <div class="mod">
-      <span class="micro">project key</span>
-      <div class="mod__row">
-        <select class="field" id="root" aria-label="Key"></select>
-        <select class="field" id="scale" aria-label="Scale"></select>
-      </div>
-    </div>
-
-    <div class="mod mod--grow">
-      <span class="micro">MIDI outputs</span>
-      <div class="mod__row">
-        <button class="btn" id="midi-enable">enable MIDI</button>
-        <div class="seg" id="slot-picker" role="group" aria-label="Output slot"></div>
-        <select class="field" id="midi-out" aria-label="Device for the selected output" style="max-width:130px" disabled></select>
-        <button class="btn" id="slot-clock" aria-pressed="true" title="Send clock to this output">clk A</button>
-        <button class="btn" id="clock-out" aria-pressed="true" title="Send MIDI clock, start and stop at all, so receiving gear follows Gridi's tempo">clock</button>
-        <button class="btn btn--red" id="panic" title="All notes off">panic</button>
-      </div>
-    </div>
-
-    <div class="mod">
-      <span class="micro">MIDI in</span>
-      <div class="mod__row">
-        <select class="field" id="midi-in" aria-label="MIDI input device" style="max-width:120px" disabled></select>
-        <button class="btn" id="sync-ext" aria-pressed="false" title="Follow the incoming MIDI clock instead of the project tempo">sync</button>
-      </div>
-    </div>
-
   </header>
 
   <div class="guard" id="guard" hidden role="status">
@@ -95,27 +109,43 @@ const BODY = `
     <button class="guard__close" id="guard-close" aria-label="Dismiss">&times;</button>
   </div>
 
+  <div class="transport">
+    <button class="btn-play" id="play" aria-pressed="false">play</button>
+
+    <div class="mod">
+      <span class="micro">position</span>
+      <div class="readout"><span id="position">001.1</span></div>
+    </div>
+
+    <div class="patch">
+      <span class="micro">patch</span>
+      <input class="field patch__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
+      <div class="patch__buttons">
+        <button class="btn" id="new">new</button>
+        <button class="btn" id="library">library</button>
+        <button class="btn" id="sounds">sounds</button>
+        <button class="btn" id="demo">demo</button>
+        <button class="btn" id="export">save</button>
+        <button class="btn" id="import">open</button>
+        <button class="btn" id="theme" title="Toggle theme">dark</button>
+      </div>
+    </div>
+  </div>
+
   <div class="body">
     <nav class="rail" aria-label="Node palette">
-      <div class="rail__head"><b>nodes</b><span>click to place</span></div>
+      <div class="rail__head">
+        <button class="disclose" type="button" id="rail-toggle" aria-expanded="false" aria-controls="palette" title="Show the node names">
+          <span class="chev" aria-hidden="true"></span>
+          <span class="visually-hidden">Node names</span>
+        </button>
+        <b class="rail__label">nodes</b>
+      </div>
       <div id="palette"></div>
       <p class="rail__note">
         Drag from a node's right edge onto another node to patch them.
         Lines carry the channels and the key.
       </p>
-      <div class="rail__foot">
-        <span class="micro">patch</span>
-        <input class="field rail__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
-        <div class="rail__buttons">
-          <button class="btn" id="new">new</button>
-          <button class="btn" id="library">library</button>
-          <button class="btn" id="sounds">sounds</button>
-          <button class="btn" id="demo">demo</button>
-          <button class="btn" id="export">save</button>
-          <button class="btn" id="import">open</button>
-          <button class="btn" id="theme" title="Toggle theme">dark</button>
-        </div>
-      </div>
     </nav>
 
     <section class="stage">
@@ -145,7 +175,14 @@ const BODY = `
     </section>
 
     <aside class="pane" aria-label="Inspector">
-      <div class="pane__head"><b>inspector</b><span id="sel-kind">nothing</span></div>
+      <div class="pane__head">
+        <button class="disclose disclose--pane" type="button" id="pane-toggle" aria-expanded="true" aria-controls="inspector" title="Minimise the inspector">
+          <span class="chev" aria-hidden="true"></span>
+          <span class="visually-hidden">Inspector</span>
+        </button>
+        <b class="pane__label">inspector</b>
+        <span id="sel-kind">nothing</span>
+      </div>
       <div class="pane__body" id="inspector"></div>
       <div class="pane__actions">
         <button class="btn" id="duplicate">duplicate</button>

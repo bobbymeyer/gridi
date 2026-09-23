@@ -233,7 +233,7 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
 ## library
 
-**Library** in the left rail lists the patches that ship with Gridi. Picking one
+**Library**, on the transport strip, lists the patches that ship with Gridi. Picking one
 opens it like any other patch, undo included. Gridi opens on Bossa Nova out of
 the same library, so a first visit arrives at a patch doing the thing the app
 is for rather than at an empty grid. **Demo** in the rail is the other one: a
@@ -305,7 +305,7 @@ That is a click track for building a patch, not an instrument.
 
 ## sounds
 
-**Sounds** in the left rail lists the channels a patch plays on, worked out
+**Sounds**, on the transport strip, lists the channels a patch plays on, worked out
 from the graph, and sets a General MIDI program for each. Gridi sends them as
 program changes 50ms before the first note, so a receiving module is on the
 right sound before it has anything to play.
@@ -333,8 +333,8 @@ Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
 
 ## patches
 
-A patch is one JSON file: nodes, lines, tempo, grid, key. Name it in the left
-rail; **Save** names the file after it.
+A patch is one JSON file: nodes, lines, tempo, grid, key. Name it on the
+transport strip; **Save** names the file after it.
 
 | To open one | How |
 | --- | --- |
@@ -354,16 +354,19 @@ machine binds its own devices.
 
 ## MIDI
 
-| Control | Where | Does |
-| --- | --- | --- |
-| Enable MIDI | header | Requests access. Needs a user gesture and a secure context. |
-| A B C D | header | Picks which output slot the device list and Clk apply to |
-| Device list | header | Binds a device to that slot |
-| Clk A–D | header | Whether that output receives clock |
-| Clock | header | Whether clock is sent at all |
-| Panic | header | All notes off on every output |
-| MIDI in device | header | The port clock and played notes arrive on |
-| Sync | header | Follow the incoming clock instead of the project tempo |
+Every control below is on the **MIDI in & out** tab, the second of the two in
+the header.
+
+| Control | Does |
+| --- | --- |
+| Enable MIDI | Requests access. Needs a user gesture and a secure context. |
+| A B C D | Picks which output slot the device list and Clk apply to |
+| Device list | Binds a device to that slot |
+| Clk A–D | Whether that output receives clock |
+| Clock | Whether clock is sent at all |
+| Panic | All notes off on every output |
+| MIDI in device | The port clock and played notes arrive on |
+| Sync | Follow the incoming clock instead of the project tempo |
 
 Outputs are named slots. A patch stores the slot letter; each machine binds its
 own devices, remembered between sessions.
@@ -382,16 +385,19 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | --- | --- |
 | Play / stop | Space, or Play |
 | Place a node | Click a type in the left rail, then click the grid. Shift keeps placing. |
+| Show the node names | The chevron beside **nodes**. The rail keeps to its colours until then, and remembers which way it was left. |
+| Fold the inspector away | The chevron in its head |
+| Project settings, MIDI ports | The two tabs in the header |
 | Patch two nodes | Drag from a node's right edge onto another node |
 | Select | Click a node or a line |
 | Move a node | Drag it |
 | Pan | Drag empty grid, or alt-drag |
 | Zoom | Wheel |
 | Fit to patch | F |
-| Set what a cell is worth | Grid, in the header |
+| Set what a cell is worth | Grid, in the project tab |
 | Open a patch | Drop the file on the canvas, or paste its text |
-| Open a patch that ships with Gridi | Library, in the left rail |
-| Choose what each channel plays | Sounds, in the left rail |
+| Open a patch that ships with Gridi | Library, on the transport strip |
+| Choose what each channel plays | Sounds, on the transport strip |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
@@ -400,8 +406,9 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Save patch | ⌘S, or Save |
 | Cancel | Escape |
 
-New, Demo, Save, Open and the theme toggle are in the left rail. Patches
-autosave to local storage.
+New, Demo, Save, Open and the theme toggle sit with the patch name on the
+transport strip, the line between the settings and the grid. Patches autosave
+to local storage.
 
 Embedded in someone else's page, every key and the wheel above waits until the
 app has been clicked into, and stops again when it is clicked out of.
@@ -459,7 +466,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 
 ### share a patch
 
-1. Give it a name in the left rail.
+1. Give it a name on the transport strip.
 2. **Save**. The file lands in your downloads, named after the patch.
 3. Send the file, or its text.
 4. They drop it on their canvas, or paste it there.
