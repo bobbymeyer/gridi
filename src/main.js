@@ -8,7 +8,7 @@ import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
 import {
   createPatch, createNode, addNode, removeNode, removeLine, connect, canConnect,
-  demoPatch, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
+  demoPatch, OPENING_PATCH, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
 import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
 import { SoundFont } from './soundfont.js';
@@ -29,6 +29,18 @@ const BASE_THEME_KEY = 'gridi.theme';
 // slots, and each machine decides what sits behind them.
 const BASE_OUTPUTS_KEY = 'gridi.outputs.v1';
 const MAX_HISTORY = 60;
+
+/**
+ * How far out the view goes.
+ *
+ * It used to stop at 0.32, which was about where a node stops being readable —
+ * a fair floor for the wheel, and the wrong one for a fit: a patch the size of
+ * Bossa Nova in a stage the size of an embed needs 0.29 to be seen whole, and
+ * what the floor bought was a legible node with the rest of the patch off the
+ * edge. Seeing all of it is the point of a fit, so the floor went down to
+ * where the shape of a patch still reads even when its labels do not.
+ */
+const ZOOM_MIN = 0.2;
 
 /**
  * An asset that ships beside the app, wherever the app was loaded from.
@@ -75,6 +87,9 @@ export function initGridi(mountEl, options = {}) {
   // in every way that matters.
   themeHost = options.embedded ? mount : document.documentElement;
 
+  /** Running inside somebody else's page, rather than on gridi's own. */
+  const embedded = Boolean(options.embedded);
+
   // Namespaced, so a patch played inside somebody's note cannot overwrite the
   // one being worked on at the real thing. Same app, different desk.
   const ns = options.storagePrefix ?? '';
@@ -85,6 +100,25 @@ export function initGridi(mountEl, options = {}) {
   // Inside a shadow root the document reports the host as focused, not the
   // field the reader is actually typing in.
   const activeEl = () => mount.getRootNode().activeElement ?? document.activeElement;
+
+  /**
+   * Whether the keyboard, the wheel and the clipboard are gridi's to take.
+   *
+   * On its own page they always are. Embedded in a note they are not: the
+   * reader is reading, and a page where space starts a sequencer instead of
+   * scrolling it, where ⌘S offers a patch instead of the page, and where the
+   * wheel stops dead over the middle of the article, is a page that one of its
+   * figures has taken over. So embedded, gridi answers the keyboard once
+   * somebody has clicked into it, and gives it straight back when they click
+   * out. Nothing changes on its own page, where clicking in is arriving.
+   */
+  const hasFocus = () => !embedded || mount.contains(activeEl());
+
+  /**
+   * How the footer opens. Embedded, space is not gridi's until it is clicked
+   * into, so saying "press space" to somebody who has not is a lie.
+   */
+  const READY_HINT = embedded ? 'Click the grid, then space plays.' : 'Press play, or space.';
 
   // Listeners on window and document outlive the mount, so they are kept and
   // taken off again. Everything else is bound to elements inside the mount and
@@ -238,7 +272,7 @@ export function initGridi(mountEl, options = {}) {
     const pad = CELL * 3;
     const zoom = clamp(
       Math.min(rect.width / (maxX - minX + pad * 2), rect.height / (maxY - minY + pad * 2)),
-      0.32,
+      ZOOM_MIN,
       1,
     );
     patch.view = {
@@ -421,7 +455,23 @@ export function initGridi(mountEl, options = {}) {
 
   let ticker = null;
 
+  /**
+   * Whether the reader has taken the view for themselves.
+   *
+   * Embedded, gridi is laid out twice: once bare, and again when the
+   * stylesheet arrives and the stage finally has the size it will keep. A fit
+   * computed against the first of those is a fit against a box that never
+   * existed — which is how the patch came to sit clipped along the top of the
+   * note. So the fit follows the canvas while the view is still gridi's own,
+   * and stops the moment somebody pans or zooms, because after that the view
+   * is theirs and nothing is entitled to move it.
+   */
+  let viewIsTheirs = false;
+
   async function play() {
+    // The first press of play is the first time anybody has asked to hear
+    // something, which is when the bundled font is worth its download.
+    wantFont();
     const ok = await audio.resume();
     if (!ok) setStatus('Audio context blocked. Click play again.', 'Note:');
     engine.start();
@@ -456,6 +506,9 @@ export function initGridi(mountEl, options = {}) {
   const nodeIndex = () => new Map(state.patch.nodes.map((n) => [n.id, n]));
 
   canvas.addEventListener('pointerdown', (e) => {
+    // Clicking the grid is how the app is asked for the keyboard when it is
+    // embedded, and how tabbing back to it lands somewhere sensible otherwise.
+    canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(e.pointerId);
     const world = pointerWorld(e);
 
@@ -521,6 +574,7 @@ export function initGridi(mountEl, options = {}) {
     const drag = state.drag;
 
     if (drag?.kind === 'pan') {
+      viewIsTheirs = true;
       state.patch.view.x = drag.view.x + (e.clientX - drag.startX) / state.patch.view.zoom;
       state.patch.view.y = drag.view.y + (e.clientY - drag.startY) / state.patch.view.zoom;
       return;
@@ -606,14 +660,18 @@ export function initGridi(mountEl, options = {}) {
   canvas.addEventListener(
     'wheel',
     (e) => {
+      // Embedded and not clicked into: this is the reader scrolling the page
+      // the app happens to be sitting in, so let it scroll.
+      if (!hasFocus()) return;
       e.preventDefault();
+      viewIsTheirs = true;
       const view = state.patch.view;
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       const before = screenToWorld({ x: sx, y: sy }, view);
       const factor = Math.exp(-e.deltaY * 0.0014);
-      view.zoom = clamp(view.zoom * factor, 0.32, 2.6);
+      view.zoom = clamp(view.zoom * factor, ZOOM_MIN, 2.6);
       const after = screenToWorld({ x: sx, y: sy }, view);
       view.x += after.x - before.x;
       view.y += after.y - before.y;
@@ -629,6 +687,7 @@ export function initGridi(mountEl, options = {}) {
   };
 
   onOutside(window, 'keydown', (e) => {
+    if (!hasFocus()) return;
     const mod = e.metaKey || e.ctrlKey;
 
     if (mod && e.key.toLowerCase() === 'z') {
@@ -814,13 +873,50 @@ export function initGridi(mountEl, options = {}) {
     return library;
   }
 
-  async function openLibraryPatch(entry) {
+  async function libraryPatch(entry) {
     const res = await fetch(asset(`patches/${entry.file}`));
     if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
     const patch = readPatch(await res.text(), onPatchLimit);
     if (!patch) throw new Error(`${entry.file} is not a patch`);
+    return patch;
+  }
+
+  async function openLibraryPatch(entry) {
+    const patch = await libraryPatch(entry);
     closeSheet();
     openPatch(patch, entry.name);
+  }
+
+  /**
+   * What is on the grid the first time somebody arrives.
+   *
+   * Bossa Nova, out of the library rather than out of the source. A reader who
+   * has never seen gridi should meet a patch that is doing the thing the app is
+   * for — a clave written as distance, five lines of different lengths off one
+   * clock — and it should be the same file the library hands out, not a second
+   * copy of it that drifts the first time the rhythm is touched.
+   *
+   * The library is fetched, and a fetch can fail: opened off a file:// URL
+   * there is no library at all. The built-in demo is the floor under that, and
+   * it is a working patch too.
+   */
+  async function openingPatch() {
+    try {
+      const entries = await loadLibrary();
+      const entry = entries.find((e) => e.file === OPENING_PATCH) ?? entries[0];
+      if (!entry) throw new Error('the library is empty');
+      const patch = await libraryPatch(entry);
+      // Somebody who started building in the moment it took to arrive keeps
+      // what they built: the opening patch is only ever for an empty grid.
+      if (state.patch.nodes.length) return;
+      loadPatch(patch);
+      inspector.show(state.patch, state.selection);
+      setStatus(`${entry.name}. ${READY_HINT}`, 'Ready.');
+    } catch {
+      if (state.patch.nodes.length) return;
+      loadPatch(demoPatch());
+      inspector.show(state.patch, state.selection);
+    }
   }
 
   function closeSheet() {
@@ -933,33 +1029,53 @@ export function initGridi(mountEl, options = {}) {
   }
 
   /**
-   * The font to start with: the one dropped in last time, or the one that ships.
+   * The font to start with: the one dropped in last time, if there was one.
    *
-   * Nothing waits on this. A patch is playable before the font arrives and
-   * better afterwards, and a browser caches thirty megabytes perfectly well, so
-   * the cost is paid once.
+   * Nothing waits on this, and nothing is fetched for it. What ships with gridi
+   * is thirty-two megabytes, and it used to be pulled down on boot — so a note
+   * that merely *mentions* the sequencer cost every reader thirty-two megabytes
+   * before they had asked to hear a thing. It is fetched on the first press of
+   * play now, by `wantFont` below, where somebody has asked.
    */
   async function startingFont() {
     const held = await recallSoundfont();
-    if (held) {
-      await useSoundfontFile(held.bytes, held.name, { keep: false });
-      return;
-    }
-    try {
-      const entry = await bundledFont();
-      setStatus(`Loading ${entry.name}…`, 'SoundFont.');
-      const res = await fetch(asset(`soundfont/${entry.file}`));
-      if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
-      // Not kept in storage: it is on disk beside the app already, and putting a
-      // second copy in the browser's quota would only crowd out a font someone
-      // actually chose.
-      const font = await useSoundfontFile(await res.arrayBuffer(), entry.file, { keep: false });
-      if (font) {
-        setStatus(`${entry.name} by ${entry.author}, ${describe(font)}. Ready.`, 'SoundFont.');
+    if (held) await useSoundfontFile(held.bytes, held.name, { keep: false });
+  }
+
+  /** The fetch of the bundled font, once it has been asked for. */
+  let fontWanted = null;
+
+  /**
+   * Ask for the sounds, if there are none yet.
+   *
+   * Not awaited by its caller: the transport starts on the beat it was pressed
+   * and the notes it sends before the font lands go to the built-in voices and
+   * to MIDI, which is most of what gridi is for. The sound fills in underneath.
+   */
+  function wantFont() {
+    if (audio.soundfont || fontWanted) return fontWanted;
+    fontWanted = (async () => {
+      try {
+        const entry = await bundledFont();
+        const res = await fetch(asset(`soundfont/${entry.file}`));
+        if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
+        // Said before the body arrives, and said with the number, because the
+        // number is the reason the wait is worth explaining.
+        const length = Number(res.headers.get('content-length')) || 0;
+        setStatus(`Loading ${entry.name}${length ? `, ${size(length)}` : ''}…`, 'SoundFont.');
+        // Not kept in storage: it is on disk beside the app already, and putting
+        // a second copy in the browser's quota would only crowd out a font
+        // someone actually chose.
+        const font = await useSoundfontFile(await res.arrayBuffer(), entry.file, { keep: false });
+        if (font) {
+          setStatus(`${entry.name} by ${entry.author}, ${describe(font)}. Ready.`, 'SoundFont.');
+        }
+      } catch {
+        fontWanted = null;
+        setStatus('No SoundFont. Drop a .sf2 on the canvas to hear these sounds.', '');
       }
-    } catch {
-      setStatus('No SoundFont. Drop a .sf2 on the canvas to hear these sounds.', '');
-    }
+    })();
+    return fontWanted;
   }
 
   /* ----------------------------------------------------------------- sounds */
@@ -972,7 +1088,10 @@ export function initGridi(mountEl, options = {}) {
    * sound writes a program number into the patch; the transport sends it on the
    * way in, and anything receiving is on the right sound before the first note.
    */
-  function showSounds(list) {
+  async function showSounds(list) {
+    // Cleared here as well as by the panel, because this redraws itself after
+    // a font is taken or dropped and appending would give it two of everything.
+    list.textContent = '';
     const font = audio.soundfont;
     const banner = document.createElement('p');
     banner.className = 'sheet__note';
@@ -1003,7 +1122,24 @@ export function initGridi(mountEl, options = {}) {
       });
       banner.append(drop);
     } else {
-      banner.textContent = 'No SoundFont. Drop a .sf2 on the canvas to hear these sounds.';
+      banner.textContent = 'No SoundFont yet — drop a .sf2 on the canvas, or ';
+      // The bundled font is not fetched until somebody asks, and this is the
+      // other place they can ask. What it costs is said in the footer as the
+      // download starts, from the response's own length.
+      const entry = await bundledFont().catch(() => null);
+      if (entry) {
+        const take = document.createElement('button');
+        take.className = 'sheet__link';
+        take.textContent = `load ${entry.name}`;
+        take.addEventListener('click', async () => {
+          take.disabled = true;
+          await wantFont();
+          showSounds(list);
+        });
+        banner.append(take, '.');
+      } else {
+        banner.textContent = 'No SoundFont. Drop a .sf2 on the canvas to hear these sounds.';
+      }
     }
     list.append(banner);
 
@@ -1113,6 +1249,7 @@ export function initGridi(mountEl, options = {}) {
    * the file rather than the file. Typing into a field is left alone.
    */
   onOutside(document, 'paste', async (e) => {
+    if (!hasFocus()) return;
     const target = e.target;
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
     const text = e.clipboardData?.getData('text/plain');
@@ -1458,17 +1595,22 @@ export function initGridi(mountEl, options = {}) {
     } catch {
       initial = null;
     }
-    loadPatch(initial && initial.nodes.length ? initial : demoPatch());
+    if (initial && initial.nodes.length) loadPatch(initial);
+    else openingPatch();
     inspector.show(state.patch, state.selection);
     audio.setVolume(Number($('volume').value));
 
-    ro = new ResizeObserver(() => renderer.resize());
+    const resize = () => {
+      renderer.resize();
+      if (!viewIsTheirs) fitView();
+    };
+    ro = new ResizeObserver(resize);
     ro.observe(canvas);
-    onOutside(window, 'resize', () => renderer.resize());
+    onOutside(window, 'resize', resize);
     renderer.resize();
     fitView();
 
-    setStatus('Press play, or space.', 'Ready.');
+    setStatus(READY_HINT, 'Ready.');
     raf = requestAnimationFrame(frame);
   }
 

@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readPatch, outgoing, nodeById, usedChannels } from '../src/model.js';
+import { readPatch, outgoing, nodeById, usedChannels, OPENING_PATCH } from '../src/model.js';
 import { lineCells } from '../src/geometry.js';
 import { gridBeats } from '../src/rhythm.js';
 import { LIBRARY } from '../tools/build.mjs';
@@ -35,6 +35,16 @@ test('the library index lists patches, and every one of them opens', () => {
     assert.ok(patch.lines.length > 0, `${entry.file} has lines`);
     assert.equal(patch.name, entry.name, `${entry.file} calls itself what the index calls it`);
   }
+});
+
+test('the patch gridi opens with is one the library ships', () => {
+  // The opening patch is fetched from the library by name, so renaming the
+  // file is enough to leave every first visit looking at the fallback demo
+  // instead -- with nothing to say so but a swallowed fetch error.
+  const entry = index.patches.find((p) => p.file === OPENING_PATCH);
+  assert.ok(entry, `${OPENING_PATCH} is in the library index`);
+  const patch = readPatch(read(entry.file));
+  assert.ok(patch && patch.nodes.length, `${OPENING_PATCH} opens and has something on the grid`);
 });
 
 test('every library patch is wired up, with nothing left dangling', () => {

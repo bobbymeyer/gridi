@@ -73,10 +73,21 @@ button { cursor: pointer; background: none; border: 0; }
 
 /* --------------------------------------------------------------- shell --- */
 
-#app {
+/* The shell is whatever gridi was mounted into: its own page's #app, or a
+   container in somebody's note. So the rule goes on the class the app puts on
+   its mount, and the height is that container's rather than the window's — a
+   note gives gridi a box, and 100vh inside a box is the wrong window. It used
+   to overflow the box by three hundred pixels, with the footer somewhere below
+   the border.
+
+   `container-type` makes the same box the reference for the widths further
+   down. The layout has to answer to the room the app actually has, which
+   embedded is never the viewport's. */
+.gridi-root {
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  height: 100vh;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  container-type: inline-size;
 }
 
 /* ---------------------------------------------------------------- head --- */
@@ -429,6 +440,11 @@ input[type="checkbox"]:checked::after {
 
 .stage { position: relative; min-width: 0; background: var(--canvas); }
 #canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* The grid takes focus on a click, which is how an embedded copy is handed the
+   keyboard. Say so, once, to whoever tabbed here. */
+#canvas:focus { outline: none; }
+#canvas:focus-visible { outline: var(--rule-w) solid var(--blue); outline-offset: -2px; }
 
 .stage__hint {
   position: absolute;
@@ -859,6 +875,60 @@ input[type="checkbox"]:checked::after {
 
 .warn[hidden] { display: none; }
 
-@media (max-width: 1080px) {
+/* Narrower, in three steps, and the stage is what each of them protects: the
+   canvas is the app, and every pixel the chrome gives back goes to it. */
+
+@container (max-width: 1080px) {
   .body { grid-template-columns: 132px 1fr 236px; }
+}
+
+/* Two rails and a canvas do not fit across a tablet, let alone a phone: at
+   860px the three columns leave the stage narrower than a single node. The
+   inspector is the one that can go under the stage and still be looking at
+   the thing it inspects, so it goes there. */
+@container (max-width: 860px) {
+  .body {
+    grid-template-columns: 132px minmax(0, 1fr);
+    /* What the inspector asks for, up to two fifths of the body: a row of its
+       own would stand half empty on a bare selection and swallow the stage on
+       a voice. `fit-content` is the one that does both. */
+    grid-template-rows: minmax(0, 1fr) fit-content(40%);
+  }
+
+  .pane {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: var(--rule-w) solid var(--rule);
+  }
+}
+
+/* A phone. The palette keeps its colours and its names and loses its roles;
+   the header wraps rather than running off the side; the pointer hints along
+   the bottom of the stage are describing a mouse that is not there. */
+@container (max-width: 560px) {
+  .body { grid-template-columns: 104px minmax(0, 1fr); }
+
+  /* Label beside control rather than above it. Stacked, the header took two
+     thirds of a phone-sized embed and left the canvas a letterbox. */
+  .mod {
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 9px;
+  }
+
+  .mod__row { flex-wrap: wrap; }
+  .readout { font-size: 20px; }
+  .btn-play { min-width: 96px; padding: 0 14px; font-size: 13px; }
+  .chip { grid-template-columns: 20px 1fr; }
+  .chip__body { padding: 6px 7px; }
+  .chip__role { display: none; }
+  .stage__hint { display: none; }
+
+  /* The MIDI row is six controls wide; given the whole line it wraps into two
+     tidy rows instead of a column of one button each. */
+  .mod--grow { flex-basis: 100%; }
+
+  /* "click to place" is instruction for a mouse, and the rail is 104px wide. */
+  .rail__head span { display: none; }
 }

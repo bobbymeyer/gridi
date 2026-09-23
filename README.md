@@ -49,6 +49,19 @@ though — a `*` reset, rules on `html, body` — so mount it in a shadow root a
 let the two documents keep their own styling. `tests/embed.html` does exactly
 that, and is the check that neither side reaches the other.
 
+Give the mount a height. gridi fills it, and lays itself out to the width it
+finds there rather than the window's, so the same copy works in a column of
+text and on a phone.
+
+Embedded, gridi waits to be clicked into before it answers the keyboard, the
+wheel or a paste, and lets go the moment you click out — a reader is reading,
+and a figure that swallows space, ⌘S and the scroll wheel has taken the page
+over. On its own page it takes all three from the start.
+
+The SoundFont it ships with is thirty-two megabytes, and it is fetched on the
+first press of play rather than on load, so a page that merely mentions gridi
+costs its readers nothing.
+
 Open `http://localhost:8080/tests/audio-check.html` for the synth checks, which
 need a browser.
 
@@ -221,7 +234,10 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 ## library
 
 **Library** in the left rail lists the patches that ship with Gridi. Picking one
-opens it like any other patch, undo included.
+opens it like any other patch, undo included. Gridi opens on Bossa Nova out of
+the same library, so a first visit arrives at a patch doing the thing the app
+is for rather than at an empty grid. **Demo** in the rail is the other one: a
+patch of built-in voices, which needs no SoundFont to make a sound.
 
 | Patch | BPM | What it is |
 | --- | --- | --- |
@@ -253,8 +269,10 @@ node tools/build.mjs
 
 ## soundfont
 
-Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and loads it
-on first run. 261 instruments and 13 drum kits in 32MB.
+Gridi ships with **GeneralUser GS 2.0.3 by S. Christian Collins**, and fetches
+it on the first press of play. 261 instruments and 13 drum kits in 32MB — too
+much to spend on somebody who has not asked to hear anything yet, which is what
+loading it on boot spent.
 
 <https://www.schristiancollins.com/generaluser>
 
@@ -385,6 +403,9 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 New, Demo, Save, Open and the theme toggle are in the left rail. Patches
 autosave to local storage.
 
+Embedded in someone else's page, every key and the wheel above waits until the
+app has been clicked into, and stops again when it is clicked out of.
+
 ## limits
 
 Past these, Gridi drops what it cannot carry and says so in a banner.
@@ -465,7 +486,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 335 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 336 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
 MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

@@ -412,6 +412,18 @@ function migrateVoice(params, stored) {
   });
 }
 
+/* ----------------------------------------------------------- opening patch */
+
+/**
+ * The library patch gridi opens with when there is nothing to put back.
+ *
+ * It lives here rather than in the app because it names a file the library
+ * ships, and the test that keeps the two in step can read this and cannot read
+ * the app. `demoPatch` below is the floor under it: what gridi opens with when
+ * the library cannot be fetched at all.
+ */
+export const OPENING_PATCH = 'bossa-nova.json';
+
 /* -------------------------------------------------------------- demo patch */
 
 /**

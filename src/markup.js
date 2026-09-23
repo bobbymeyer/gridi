@@ -119,7 +119,7 @@ const BODY = `
     </nav>
 
     <section class="stage">
-      <canvas id="canvas"></canvas>
+      <canvas id="canvas" tabindex="0" aria-label="Patch grid"></canvas>
       <div class="stage__placing" id="placing" hidden></div>
       <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
         <div class="sheet__head">
