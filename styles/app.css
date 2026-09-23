@@ -140,10 +140,20 @@ button { cursor: pointer; background: none; border: 0; }
    Embedded there is no lockup and the column collapses to nothing. */
 .head__mark { grid-area: 1 / 1 / 3 / 2; }
 
-.tabs {
+/* The tab strip, and at the far end of the same line the one control that is
+   about neither the patch nor the machine: which way round the app is. */
+.headrow {
   grid-column: 2;
   display: flex;
   border-bottom: 1px solid var(--rule);
+}
+
+.tabs { display: flex; }
+
+.tab--theme {
+  margin-left: auto;
+  border-right: 0;
+  border-left: 1px solid var(--rule);
 }
 
 .tab {
@@ -272,16 +282,25 @@ button { cursor: pointer; background: none; border: 0; }
 
 .transport .readout { font: 700 17px/1 var(--font); }
 
+/* The library's tab is the patch's: what this one is called and what can be
+   done to it, over the shelf of the ones that ship. */
+.panel--library { flex-direction: column; }
+
 .patch {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
-  padding: 0 10px;
-  border-left: 1px solid var(--rule);
+  min-height: 30px;
+  padding: 0 11px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.patch__name { width: 124px; }
+.patch__name { width: 148px; }
+
+.shelf {
+  display: flex;
+  flex-wrap: wrap;
+}
 
 .patch__buttons {
   display: flex;
@@ -1152,20 +1171,17 @@ input[type="checkbox"]:checked::after {
      tidy rows instead of a column of one button each. */
   .mod--grow { flex-basis: 100%; }
 
-  /* The patch and what can be done to it take the whole line, and wrap as one
-     run of controls: `display: contents` hands the buttons to the same flex
-     box as the name, so they fill each line instead of each taking one. */
+  /* The patch's controls wrap as one run rather than as a name and a block of
+     buttons: `display: contents` hands the buttons to the same flex box as the
+     name, so they fill each line instead of taking one of their own. */
   .patch {
     flex-wrap: wrap;
     gap: 5px;
-    margin-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--rule);
-    width: 100%;
+    padding: 5px 9px;
   }
 
   .patch__buttons { display: contents; }
-  .patch__name { flex: 0 1 118px; width: auto; }
+  .patch__name { flex: 1 1 118px; width: auto; }
 
   /* The footer clips what it cannot fit; closing its gaps up is most of the
      difference between clipping the node count and keeping it. */

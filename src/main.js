@@ -953,9 +953,12 @@ export function initGridi(mountEl, options = {}) {
    * on it should be visible at the same time as the patch it would replace.
    * Filled once, the first time the tab is asked for — the index is fetched
    * for the opening patch anyway, so by then it is usually in hand already.
+   * Above it on the same tab is the patch itself: its name, and saving,
+   * opening and starting one. What a patch is and which patch it is are the
+   * same question, and they were two rules apart.
    */
-  async function fillLibrary(panel) {
-    panel.textContent = '';
+  async function fillLibrary(shelf) {
+    shelf.textContent = '';
     const note = (text) => Object.assign(document.createElement('p'), {
       className: 'library__note',
       textContent: text,
@@ -965,12 +968,12 @@ export function initGridi(mountEl, options = {}) {
     try {
       entries = await loadLibrary();
     } catch {
-      panel.append(note('The library could not be read. Gridi has to be served over http, not opened as a file.'));
+      shelf.append(note('The library could not be read. Gridi has to be served over http, not opened as a file.'));
       return;
     }
 
     if (!entries.length) {
-      panel.append(note('Nothing in the library yet.'));
+      shelf.append(note('Nothing in the library yet.'));
       return;
     }
 
@@ -990,7 +993,7 @@ export function initGridi(mountEl, options = {}) {
           setStatus(`${entry.name} could not be opened.`, 'Sorry:');
         });
       });
-      panel.append(item);
+      shelf.append(item);
     }
   }
 
@@ -1368,7 +1371,7 @@ export function initGridi(mountEl, options = {}) {
     }
     if (id === 'tab-library' && !libraryShown) {
       libraryShown = true;
-      fillLibrary($('panel-library'));
+      fillLibrary($('shelf'));
     }
   }
 

@@ -39,16 +39,21 @@ const MARK = `    <div class="head__mark">
  *
  * The transport left the header with them. Play and the bar count belong
  * against the thing they are running — the grid — rather than up in the
- * settings, so they sit on their own rule directly above it, with the patch
- * and what can be done to it at the other end of the same line.
+ * settings, so they sit on their own rule directly above it, and nothing else
+ * does: naming a patch, saving one and opening another are all the library's
+ * business, and they are on its tab, over the shelf they act on.
  */
 const BODY = `
 
   <header class="head">
-    <div class="tabs" role="tablist" aria-label="Settings">
-      <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
-      <button class="tab" type="button" id="tab-library" role="tab" aria-selected="false" aria-controls="panel-library" tabindex="-1">library</button>
-      <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
+    <div class="headrow">
+      <div class="tabs" role="tablist" aria-label="Settings">
+        <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
+        <button class="tab" type="button" id="tab-library" role="tab" aria-selected="false" aria-controls="panel-library" tabindex="-1">library</button>
+        <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
+      </div>
+
+      <button class="tab tab--theme" type="button" id="theme" title="Toggle theme">dark</button>
     </div>
 
     <div class="panels">
@@ -78,7 +83,21 @@ const BODY = `
         </div>
       </div>
 
-      <div class="panel panel--library" id="panel-library" role="tabpanel" aria-labelledby="tab-library" hidden></div>
+      <div class="panel panel--library" id="panel-library" role="tabpanel" aria-labelledby="tab-library" hidden>
+        <div class="patch">
+          <span class="micro">patch</span>
+          <input class="field patch__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
+          <div class="patch__buttons">
+            <button class="btn" id="new">new</button>
+            <button class="btn" id="demo">demo</button>
+            <button class="btn" id="export">save</button>
+            <button class="btn" id="import">open</button>
+            <button class="btn" id="sounds">sounds</button>
+          </div>
+        </div>
+
+        <div class="shelf" id="shelf"></div>
+      </div>
 
       <div class="panel" id="panel-midi" role="tabpanel" aria-labelledby="tab-midi" hidden>
         <div class="mod mod--grow">
@@ -120,19 +139,6 @@ const BODY = `
     <div class="mod">
       <span class="micro">position</span>
       <div class="readout"><span id="position">001.1</span></div>
-    </div>
-
-    <div class="patch">
-      <span class="micro">patch</span>
-      <input class="field patch__name" id="patch-name" type="text" maxlength="60" placeholder="Untitled" aria-label="Patch name, used for the saved file">
-      <div class="patch__buttons">
-        <button class="btn" id="new">new</button>
-        <button class="btn" id="sounds">sounds</button>
-        <button class="btn" id="demo">demo</button>
-        <button class="btn" id="export">save</button>
-        <button class="btn" id="import">open</button>
-        <button class="btn" id="theme" title="Toggle theme">dark</button>
-      </div>
     </div>
   </div>
 
