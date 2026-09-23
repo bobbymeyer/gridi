@@ -234,10 +234,22 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 ## library
 
 **Library** is the second tab in the header, and it is the patch's tab as well
-as the shelf's: the patch's name and what can be done to it — new, demo, save,
-open, sounds — sit over the patches that ship with Gridi, each with what it is.
-Picking one opens it like any other patch, undo included, and the strip stays
-where it is, so the shelf is still there to try the next one from.
+as the shelves': the patch's name and what can be done to it — new, demo, keep,
+save, open, sounds — sit over two rows of patches. Picking one opens it like
+any other patch, undo included, and the row stays where it is, so the shelf is
+still there to try the next one from.
+
+**ships with** is the five below, each with what it is. The **+** on one copies
+it to the row underneath, under a name of its own — "Bossa Nova copy" — and
+leaves the canvas alone, because copying is not opening.
+
+**yours** is what this browser has been asked to keep. **Keep** puts the patch
+on the grid there, under whatever it is called; keeping it again under the same
+name replaces it, which is what saving twice means anywhere else. **×** takes
+one off, and asks first, because that is the one thing here that undo cannot
+reach. They live in this browser's local storage and nowhere else — no account,
+no sync, gone with the site data. **Save** is still how a patch leaves the
+machine.
 
 Gridi opens on Bossa Nova out of that library, so a first visit arrives at a
 patch doing the thing the app is for rather than at an empty grid. **Demo** is
@@ -339,7 +351,8 @@ Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
 ## patches
 
 A patch is one JSON file: nodes, lines, tempo, grid, key. Name it on the
-library tab; **Save** names the file after it.
+library tab; **Save** names the file after it, and **Keep** puts it on the
+shelf there under the same name.
 
 | To open one | How |
 | --- | --- |
@@ -403,6 +416,9 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Open a patch | Drop the file on the canvas, or paste its text |
 | Open a patch that ships with Gridi | The library tab |
 | Choose what each channel plays | Sounds, on the library tab |
+| Keep a patch in this browser | Keep, on the library tab |
+| Copy a patch that ships | The + on its cell, which puts it under **yours** |
+| Take a kept patch off the shelf | The × on its cell |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
@@ -500,9 +516,9 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 336 tests under `node --test`. `engine`, `model`, `music`,
-`rhythm`, `voice`, `sync`, `lfo`, `limits` and `geometry` have no DOM, audio or
-MIDI dependencies and are tested directly; the engine runs against a fake clock
+`npm test` runs 344 tests under `node --test`. `engine`, `model`, `music`,
+`rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf` and `geometry` have no DOM,
+audio or MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
 `tests/audio-check.html`.
 
