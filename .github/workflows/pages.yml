@@ -1,10 +1,9 @@
 # Publish gridi to GitHub Pages.
 #
 # gridi needs somewhere to be as well as somewhere to live: Web MIDI only works
-# in a secure context, so a file:// copy cannot send a note anywhere, and the
-# embed on bobbymeyer.com loads this module and its soundfont across the
-# network from whatever URL the deploy lands on. Until there was one, there was
-# nothing for the note to point at.
+# in a secure context, so a file:// copy cannot send a note anywhere, and
+# bobbymeyer.com serves this deploy under /gridi/ rather than keeping a copy of
+# its own. Until there was one, there was nothing for the note to point at.
 #
 # Everything ships as it sits in the repository. There is no build step and no
 # dependency to install — the app is ES modules the browser reads directly,
