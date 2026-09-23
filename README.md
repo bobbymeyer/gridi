@@ -233,15 +233,16 @@ octave, `Fold` wraps inside one octave, `Clamp` stops at the top.
 
 ## library
 
-**Library** is the second tab in the header: the patches that ship with Gridi,
-laid along it with what each one is. Picking one opens it like any other patch,
-undo included — and the strip stays where it is, so the shelf is still there to
-try the next one from.
+**Library** is the second tab in the header, and it is the patch's tab as well
+as the shelf's: the patch's name and what can be done to it — new, demo, save,
+open, sounds — sit over the patches that ship with Gridi, each with what it is.
+Picking one opens it like any other patch, undo included, and the strip stays
+where it is, so the shelf is still there to try the next one from.
 
 Gridi opens on Bossa Nova out of that library, so a first visit arrives at a
-patch doing the thing the app is for rather than at an empty grid. **Demo**, on
-the transport strip, is the other starting point: a patch of built-in voices,
-which needs no SoundFont to make a sound.
+patch doing the thing the app is for rather than at an empty grid. **Demo** is
+the other starting point: a patch of built-in voices, which needs no SoundFont
+to make a sound.
 
 | Patch | BPM | What it is |
 | --- | --- | --- |
@@ -309,7 +310,7 @@ That is a click track for building a patch, not an instrument.
 
 ## sounds
 
-**Sounds**, on the transport strip, lists the channels a patch plays on, worked out
+**Sounds**, on the library tab, lists the channels a patch plays on, worked out
 from the graph, and sets a General MIDI program for each. Gridi sends them as
 program changes 50ms before the first note, so a receiving module is on the
 right sound before it has anything to play.
@@ -338,7 +339,7 @@ Ambient also sends CC 74 from an LFO, which is filter cutoff by convention.
 ## patches
 
 A patch is one JSON file: nodes, lines, tempo, grid, key. Name it on the
-transport strip; **Save** names the file after it.
+library tab; **Save** names the file after it.
 
 | To open one | How |
 | --- | --- |
@@ -401,7 +402,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Set what a cell is worth | Grid, in the project tab |
 | Open a patch | Drop the file on the canvas, or paste its text |
 | Open a patch that ships with Gridi | The library tab |
-| Choose what each channel plays | Sounds, on the transport strip |
+| Choose what each channel plays | Sounds, on the library tab |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
@@ -410,9 +411,11 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Save patch | ⌘S, or Save |
 | Cancel | Escape |
 
-New, Demo, Save, Open and the theme toggle sit with the patch name on the
-transport strip, the line between the settings and the grid. Patches autosave
-to local storage.
+New, Demo, Save, Open and Sounds sit with the patch name on the library tab.
+The theme toggle is at the far end of the tab strip, being about neither the
+patch nor the machine. The transport — play and the bar count — is the rule
+between the settings and the grid, and holds nothing else. Patches autosave to
+local storage.
 
 Embedded in someone else's page, every key and the wheel above waits until the
 app has been clicked into, and stops again when it is clicked out of.
@@ -470,7 +473,7 @@ Repeated overloads stop the transport. Note-offs and clock are never dropped.
 
 ### share a patch
 
-1. Give it a name on the transport strip.
+1. Give it a name on the library tab.
 2. **Save**. The file lands in your downloads, named after the patch.
 3. Send the file, or its text.
 4. They drop it on their canvas, or paste it there.
