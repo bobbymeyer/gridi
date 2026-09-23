@@ -170,27 +170,61 @@ button { cursor: pointer; background: none; border: 0; }
   flex-wrap: wrap;
 }
 
-/* The library strip: one patch per cell, its blurb under its name, and the
-   rules between them separating them the way the settings' do. */
+/* Two shelves: what gridi ships with, and what this browser has been asked to
+   keep. Each is a labelled band of cells, one patch to a cell. */
+.shelf {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.shelf + .shelf { border-top: 1px solid var(--rule); }
+
+.shelf__label {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 84px;
+  padding: 0 11px;
+  border-right: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+.shelf__row {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The cell is not a button, because it holds two: the patch, and the one thing
+   that can be done to it without opening it. */
 .library__item {
-  display: block;
+  display: flex;
+  align-items: stretch;
   max-width: 232px;
-  padding: 7px 11px;
-  text-align: left;
   border-right: 1px solid var(--rule);
   background: var(--paper);
 }
 
-.library__item:hover { background: var(--paper-2); }
+.library__open {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 11px;
+  text-align: left;
+  background: var(--paper);
+}
 
-.library__item b {
+.library__open:hover { background: var(--paper-2); }
+
+.library__open b {
   display: block;
   font: 700 12px/1.1 var(--font);
   letter-spacing: 0.01em;
 }
 
 /* Two lines of it here; the whole of it on hover. */
-.library__item span {
+.library__open span {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -202,8 +236,38 @@ button { cursor: pointer; background: none; border: 0; }
   color: var(--ink-soft);
 }
 
+.library__act {
+  flex: 0 0 auto;
+  width: 22px;
+  border-left: 1px solid var(--rule);
+  background: var(--paper);
+  font: 600 13px/1 var(--font);
+  color: var(--ink-soft);
+}
+
+.library__act:hover { background: var(--ink); color: var(--paper); }
+.library__act--off:hover { background: var(--red); color: #fff; }
+
+/* Mid-question: the cell holds the question and its two answers. */
+.library__item--asking {
+  align-items: center;
+  gap: 8px;
+  padding-left: 11px;
+  font: var(--micro);
+  letter-spacing: var(--track);
+  color: var(--ink-soft);
+}
+
+.library__item--asking .library__act {
+  width: auto;
+  padding: 0 9px;
+  align-self: stretch;
+  font: var(--micro);
+  letter-spacing: var(--track);
+}
+
 .library__note {
-  padding: 10px 12px;
+  padding: 8px 12px;
   font: var(--micro);
   line-height: 1.5;
   letter-spacing: 0.06em;
@@ -286,11 +350,6 @@ button { cursor: pointer; background: none; border: 0; }
 }
 
 .patch__name { width: 148px; }
-
-.shelf {
-  display: flex;
-  flex-wrap: wrap;
-}
 
 .patch__buttons {
   display: flex;
@@ -1199,6 +1258,7 @@ input[type="checkbox"]:checked::after {
 
   /* Five patches across a phone is five rows of blurb. The names fit on two
      lines between them, and the blurbs are a tap-and-hold away. */
-  .library__item { padding: 6px 9px; }
-  .library__item span { display: none; }
+  .library__open { padding: 6px 9px; }
+  .library__open span { display: none; }
+  .shelf__label { width: 62px; padding: 0 8px; }
 }

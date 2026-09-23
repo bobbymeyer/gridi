@@ -11,6 +11,7 @@ import {
   demoPatch, OPENING_PATCH, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
 import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
+import { readShelf, writeShelf, keepPatch, removePatch, copyName, indexOfName } from './shelf.js';
 import { SoundFont } from './soundfont.js';
 import { keepSoundfont, recallSoundfont, forgetSoundfont } from './store.js';
 import { typeMeta } from './nodes.js';
@@ -96,6 +97,7 @@ export function initGridi(mountEl, options = {}) {
   const STORAGE_KEY = ns + BASE_STORAGE_KEY;
   const THEME_KEY = ns + BASE_THEME_KEY;
   const OUTPUTS_KEY = ns + BASE_OUTPUTS_KEY;
+  const SHELF_KEY = ns + 'gridi.shelf.v1';
 
   // Inside a shadow root the document reports the host as focused, not the
   // field the reader is actually typing in.
@@ -967,45 +969,218 @@ export function initGridi(mountEl, options = {}) {
    * opening and starting one. What a patch is and which patch it is are the
    * same question, and they were two rules apart.
    */
-  async function fillLibrary(shelf) {
-    shelf.textContent = '';
-    const note = (text) => Object.assign(document.createElement('p'), {
-      className: 'library__note',
-      textContent: text,
-    });
+  /* --------------------------------------------------------------- shelves */
+
+  /**
+   * What is kept in this browser.
+   *
+   * Gridi ships five patches and remembers exactly one thing you are working
+   * on. Everything between those — Tuesday's sketch, a copy of Bossa Nova with
+   * the clave moved — had nowhere to live but a downloaded file. The shelf is
+   * that middle. It is this browser's and nothing else's: saving a file is
+   * still how a patch leaves the machine.
+   */
+  let shelf = [];
+
+  /**
+   * Write the shelf, and say so if it will not go.
+   *
+   * Storage is the one thing here that can refuse, and a patch somebody thinks
+   * they kept and did not is worse than one they know they did not.
+   */
+  function keepShelf(next) {
+    try {
+      localStorage.setItem(SHELF_KEY, writeShelf(next));
+    } catch {
+      setStatus('No room left in this browser. Take a patch off the shelf, or save it as a file.', 'Sorry:');
+      return false;
+    }
+    shelf = next;
+    fillMine($('mine'));
+    return true;
+  }
+
+  /** "kept 23 Sep", which is all a shelf needs to say about when. */
+  const kept = (at) =>
+    at ? `kept ${new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : '';
+
+  /**
+   * One patch on a shelf: what it is, and the one thing besides opening it that
+   * can be done to it.
+   *
+   * The open half is a button and so is the act, which is why the cell around
+   * them is not one — a button inside a button is not something a browser will
+   * build.
+   */
+  function shelfCell({ name, blurb, title, onOpen, actLabel, actTitle, actClass = '', onAct }) {
+    const item = document.createElement('div');
+    item.className = 'library__item';
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'library__open';
+    open.append(Object.assign(document.createElement('b'), { textContent: name }));
+    if (blurb) open.append(Object.assign(document.createElement('span'), { textContent: blurb }));
+    if (title) open.title = title;
+    open.addEventListener('click', onOpen);
+
+    const act = document.createElement('button');
+    act.type = 'button';
+    act.className = `library__act ${actClass}`.trim();
+    act.textContent = actLabel;
+    act.title = actTitle;
+    act.addEventListener('click', onAct);
+
+    item.append(open, act);
+    return item;
+  }
+
+  const shelfNote = (text) => Object.assign(document.createElement('p'), {
+    className: 'library__note',
+    textContent: text,
+  });
+
+  /**
+   * The patches gridi ships with, along the header.
+   *
+   * It was a panel over the canvas, which is the shape for a thing you open,
+   * read and shut again. A shelf is not that: it is looked along, and what is
+   * on it should be visible at the same time as the patch it would replace.
+   * Filled once, the first time the tab is asked for — the index is fetched
+   * for the opening patch anyway, so by then it is usually in hand already.
+   * Above it on the same tab is the patch itself: its name, and saving,
+   * opening and starting one. What a patch is and which patch it is are the
+   * same question, and they were two rules apart.
+   */
+  async function fillLibrary(row) {
+    row.textContent = '';
 
     let entries;
     try {
       entries = await loadLibrary();
     } catch {
-      shelf.append(note('The library could not be read. Gridi has to be served over http, not opened as a file.'));
+      row.append(shelfNote('The library could not be read. Gridi has to be served over http, not opened as a file.'));
       return;
     }
 
     if (!entries.length) {
-      shelf.append(note('Nothing in the library yet.'));
+      row.append(shelfNote('Nothing in the library yet.'));
       return;
     }
 
     for (const entry of entries) {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'library__item';
-      item.append(Object.assign(document.createElement('b'), { textContent: entry.name }));
-      if (entry.note) {
-        item.append(Object.assign(document.createElement('span'), { textContent: entry.note }));
+      row.append(shelfCell({
+        name: entry.name,
         // The blurb is clamped to two lines in the strip; the whole of it is
         // one hover away.
-        item.title = entry.note;
-      }
-      item.addEventListener('click', () => {
-        openLibraryPatch(entry).catch(() => {
-          setStatus(`${entry.name} could not be opened.`, 'Sorry:');
-        });
-      });
-      shelf.append(item);
+        blurb: entry.note,
+        title: entry.note,
+        onOpen: () => {
+          openLibraryPatch(entry).catch(() => {
+            setStatus(`${entry.name} could not be opened.`, 'Sorry:');
+          });
+        },
+        actLabel: '+',
+        actTitle: `Copy ${entry.name} to your shelf`,
+        onAct: () => copyToShelf(entry),
+      }));
     }
   }
+
+  /** The kept ones, newest first, under the ones that ship. */
+  function fillMine(row) {
+    row.textContent = '';
+
+    if (!shelf.length) {
+      row.append(shelfNote('Nothing yet. Keep puts what is on the grid here; + on a patch above puts a copy of that one.'));
+      return;
+    }
+
+    for (const entry of shelf) {
+      row.append(shelfCell({
+        name: entry.name,
+        blurb: kept(entry.saved),
+        title: entry.saved ? `Kept ${new Date(entry.saved).toLocaleString()}` : '',
+        onOpen: () => openKept(entry),
+        actLabel: '\u00d7',
+        actTitle: `Take ${entry.name} off your shelf`,
+        actClass: 'library__act--off',
+        onAct: (e) => askRemove(e.currentTarget.closest('.library__item'), entry),
+      }));
+    }
+  }
+
+  function openKept(entry) {
+    const patch = readPatch(entry.patch, onPatchLimit);
+    if (!patch) {
+      setStatus(`“${entry.name}” could not be read, and has been left where it is.`, 'Sorry:');
+      return;
+    }
+    openPatch(patch, entry.name);
+  }
+
+  /** Keep what is on the grid, under whatever it is called. */
+  function keepCurrent() {
+    const name = state.patch.name?.trim() || 'Untitled';
+    const had = indexOfName(shelf, name) !== -1;
+    if (!keepShelf(keepPatch(shelf, name, serialize(state.patch)))) return;
+    setStatus(
+      had ? `“${name}” replaces the one that was on your shelf.` : `“${name}” is on your shelf.`,
+      'Kept.',
+    );
+  }
+
+  /** A patch that ships, copied onto the shelf under a name of its own. */
+  async function copyToShelf(entry) {
+    let patch;
+    try {
+      patch = await libraryPatch(entry);
+    } catch {
+      setStatus(`${entry.name} could not be copied.`, 'Sorry:');
+      return;
+    }
+    patch.name = copyName(entry.name, shelf);
+    // The canvas is left alone: copying is not opening, and somebody halfway
+    // through a patch did not ask for it to be replaced.
+    if (keepShelf(keepPatch(shelf, patch.name, serialize(patch)))) {
+      setStatus(`“${patch.name}” is on your shelf. Click it to open it.`, 'Copied.');
+    }
+  }
+
+  /**
+   * Taking a patch off the shelf is the one thing here that cannot be undone,
+   * so it asks first — in the cell itself, rather than in a dialog that an
+   * embedded copy would throw across somebody's page.
+   */
+  function askRemove(item, entry) {
+    item.textContent = '';
+    item.classList.add('library__item--asking');
+    // The cell is too narrow for the name and the question both, and the cell
+    // is where the name was a moment ago.
+    item.title = `Take “${entry.name}” off your shelf?`;
+    item.append(Object.assign(document.createElement('span'), { textContent: 'remove?' }));
+
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'library__act library__act--off';
+    yes.textContent = 'yes';
+    yes.addEventListener('click', () => {
+      if (keepShelf(removePatch(shelf, entry.name))) {
+        setStatus(`“${entry.name}” is off your shelf.`, 'Removed.');
+      }
+    });
+
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'library__act';
+    no.textContent = 'no';
+    no.addEventListener('click', () => fillMine($('mine')));
+
+    item.append(yes, no);
+    yes.focus();
+  }
+
+  $('keep').addEventListener('click', keepCurrent);
 
   /* ------------------------------------------------------------- soundfont */
 
@@ -1707,6 +1882,12 @@ export function initGridi(mountEl, options = {}) {
     setRail(recall(RAIL_KEY) === 'labels', { keep: false });
     setPane(recall(PANE_KEY) !== 'min', { keep: false });
     showTab('tab-project');
+
+    // Whatever was kept in this browser, and the row that says so when nothing
+    // has been. Drawn now rather than when the tab is first opened, so that
+    // keeping a patch has somewhere to appear from the first press.
+    shelf = readShelf(recall(SHELF_KEY));
+    fillMine($('mine'));
 
     populateKeySelects();
     // The font from last time, if there was one. Nothing waits on it: a patch is

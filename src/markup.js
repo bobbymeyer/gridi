@@ -41,7 +41,10 @@ const MARK = `    <div class="head__mark">
  * against the thing they are running — the grid — rather than up in the
  * settings, so they sit on their own rule directly above it, and nothing else
  * does: naming a patch, saving one and opening another are all the library's
- * business, and they are on its tab, over the shelf they act on.
+ * business, and they are on its tab, over the shelves they act on.
+ *
+ * There are two of those. The one gridi ships with, and the one the reader
+ * keeps in their own browser, which starts empty and says so.
  */
 const BODY = `
 
@@ -86,13 +89,22 @@ const BODY = `
           <div class="patch__buttons">
             <button class="btn" id="new">new</button>
             <button class="btn" id="demo">demo</button>
+            <button class="btn" id="keep" title="Keep this patch on your shelf, in this browser">keep</button>
             <button class="btn" id="export">save</button>
             <button class="btn" id="import">open</button>
             <button class="btn" id="sounds">sounds</button>
           </div>
         </div>
 
-        <div class="shelf" id="shelf"></div>
+        <div class="shelf">
+          <span class="shelf__label micro">ships with</span>
+          <div class="shelf__row" id="shelf"></div>
+        </div>
+
+        <div class="shelf shelf--mine">
+          <span class="shelf__label micro">yours</span>
+          <div class="shelf__row" id="mine"></div>
+        </div>
       </div>
 
       <div class="panel" id="panel-midi" role="tabpanel" aria-labelledby="tab-midi" hidden>
