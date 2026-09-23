@@ -46,14 +46,10 @@ const MARK = `    <div class="head__mark">
 const BODY = `
 
   <header class="head">
-    <div class="headrow">
-      <div class="tabs" role="tablist" aria-label="Settings">
-        <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
-        <button class="tab" type="button" id="tab-library" role="tab" aria-selected="false" aria-controls="panel-library" tabindex="-1">library</button>
-        <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
-      </div>
-
-      <button class="tab tab--theme" type="button" id="theme" title="Toggle theme">dark</button>
+    <div class="tabs" role="tablist" aria-label="Settings">
+      <button class="tab" type="button" id="tab-project" role="tab" aria-selected="true" aria-controls="panel-project">project</button>
+      <button class="tab" type="button" id="tab-library" role="tab" aria-selected="false" aria-controls="panel-library" tabindex="-1">library</button>
+      <button class="tab" type="button" id="tab-midi" role="tab" aria-selected="false" aria-controls="panel-midi" tabindex="-1">MIDI in &amp; out</button>
     </div>
 
     <div class="panels">
@@ -213,6 +209,8 @@ const BODY = `
     </label>
     <span class="foot__sep"></span>
     <span id="counts">0 nodes · 0 lines</span>
+    <span class="foot__sep"></span>
+    <button class="btn foot__theme" type="button" id="theme" title="Toggle theme">dark</button>
   </footer>
 
 `;
