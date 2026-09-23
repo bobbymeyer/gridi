@@ -412,10 +412,10 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Cancel | Escape |
 
 New, Demo, Save, Open and Sounds sit with the patch name on the library tab.
-The theme toggle is at the far end of the tab strip, being about neither the
-patch nor the machine. The transport — play and the bar count — is the rule
-between the settings and the grid, and holds nothing else. Patches autosave to
-local storage.
+The theme toggle is in the footer, with the level and the counts: what is
+app-wide rather than about this patch or the machine it is played on. The
+transport — play and the bar count — is the rule between the settings and the
+grid, and holds nothing else. Patches autosave to local storage.
 
 Embedded in someone else's page, every key and the wheel above waits until the
 app has been clicked into, and stops again when it is clicked out of.
