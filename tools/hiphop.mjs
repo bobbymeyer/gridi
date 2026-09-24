@@ -5,7 +5,7 @@
 // beat is up within a bar.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, fan, phase, channel, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
+import { downstream, fan, phase, channel, drum, drumLine, KIT, modulate, sounds, GM } from './lib.mjs';
 
 const BEAT = 4; // cells
 const BAR = 16;
@@ -111,6 +111,16 @@ export function hiphopPatch() {
       line: channel(4),
     });
   });
+
+  /* Boom-bap is a loop with a hand on it. The hats carry most of it: swung
+   * eighths whose weight moves bar to bar are the difference between a sampled
+   * break and a programmed one, and through a SoundFont that weight is tone.
+   * The ghost sixteenths come and go underneath on a cycle of their own. */
+  modulate(p, hatClock, { param: 'velocity', from: 42, to: 104, rate: '1bar' });
+  modulate(p, ghostGate, { param: 'probability', from: 8, to: 40, rate: '8bar' });
+  modulate(p, kickClock, { param: 'velocity', from: 96, to: 126, rate: '4bar' });
+  modulate(p, bassClock, { param: 'velocity', from: 80, to: 118, rate: '2bar' });
+  modulate(p, topClock, { param: 'velocity', from: 44, to: 96, rate: '4bar', phase: 0.45 });
 
   return sounds(p, { 2: GM.fingeredBass, 4: GM.vibraphone, 10: GM.standardKit });
 }

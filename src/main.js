@@ -11,7 +11,9 @@ import {
   demoPatch, OPENING_PATCH, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
 } from './model.js';
 import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
-import { readShelf, writeShelf, keepPatch, removePatch, copyName, indexOfName } from './shelf.js';
+import {
+  readShelf, writeShelf, keepPatch, removePatch, renamePatch, copyName, indexOfName,
+} from './shelf.js';
 import { SoundFont } from './soundfont.js';
 import { keepSoundfont, recallSoundfont, forgetSoundfont } from './store.js';
 import { typeMeta } from './nodes.js';
@@ -1012,7 +1014,7 @@ export function initGridi(mountEl, options = {}) {
    * them is not one — a button inside a button is not something a browser will
    * build.
    */
-  function shelfCell({ name, blurb, title, onOpen, actLabel, actTitle, actClass = '', onAct }) {
+  function shelfCell({ name, blurb, title, onOpen, acts }) {
     const item = document.createElement('div');
     item.className = 'library__item';
 
@@ -1024,15 +1026,24 @@ export function initGridi(mountEl, options = {}) {
     if (title) open.title = title;
     open.addEventListener('click', onOpen);
 
-    const act = document.createElement('button');
-    act.type = 'button';
-    act.className = `library__act ${actClass}`.trim();
-    act.textContent = actLabel;
-    act.title = actTitle;
-    act.addEventListener('click', onAct);
-
-    item.append(open, act);
+    item.append(open, actColumn(acts));
     return item;
+  }
+
+  /** The strip of buttons down the right of a cell, whatever it is asking. */
+  function actColumn(acts) {
+    const column = document.createElement('div');
+    column.className = 'library__acts';
+    for (const { label, title, className = '', onClick } of acts) {
+      const act = document.createElement('button');
+      act.type = 'button';
+      act.className = `library__act ${className}`.trim();
+      act.textContent = label;
+      if (title) act.title = title;
+      act.addEventListener('click', onClick);
+      column.append(act);
+    }
+    return column;
   }
 
   const shelfNote = (text) => Object.assign(document.createElement('p'), {
@@ -1080,9 +1091,11 @@ export function initGridi(mountEl, options = {}) {
             setStatus(`${entry.name} could not be opened.`, 'Sorry:');
           });
         },
-        actLabel: '+',
-        actTitle: `Copy ${entry.name} to your shelf`,
-        onAct: () => copyToShelf(entry),
+        acts: [{
+          label: 'copy',
+          title: `Copy ${entry.name} to your shelf`,
+          onClick: () => copyToShelf(entry),
+        }],
       }));
     }
   }
@@ -1102,10 +1115,19 @@ export function initGridi(mountEl, options = {}) {
         blurb: kept(entry.saved),
         title: entry.saved ? `Kept ${new Date(entry.saved).toLocaleString()}` : '',
         onOpen: () => openKept(entry),
-        actLabel: '\u00d7',
-        actTitle: `Take ${entry.name} off your shelf`,
-        actClass: 'library__act--off',
-        onAct: (e) => askRemove(e.currentTarget.closest('.library__item'), entry),
+        acts: [
+          {
+            label: 'rename',
+            title: `Call ${entry.name} something else`,
+            onClick: (e) => askName(e.currentTarget.closest('.library__item'), entry),
+          },
+          {
+            label: 'remove',
+            title: `Take ${entry.name} off your shelf`,
+            className: 'library__act--off',
+            onClick: (e) => askRemove(e.currentTarget.closest('.library__item'), entry),
+          },
+        ],
       }));
     }
   }
@@ -1158,26 +1180,74 @@ export function initGridi(mountEl, options = {}) {
     // The cell is too narrow for the name and the question both, and the cell
     // is where the name was a moment ago.
     item.title = `Take “${entry.name}” off your shelf?`;
-    item.append(Object.assign(document.createElement('span'), { textContent: 'remove?' }));
+    item.append(Object.assign(document.createElement('span'), {
+      className: 'library__ask',
+      textContent: 'remove?',
+    }));
 
-    const yes = document.createElement('button');
-    yes.type = 'button';
-    yes.className = 'library__act library__act--off';
-    yes.textContent = 'yes';
-    yes.addEventListener('click', () => {
-      if (keepShelf(removePatch(shelf, entry.name))) {
-        setStatus(`“${entry.name}” is off your shelf.`, 'Removed.');
+    item.append(actColumn([
+      {
+        label: 'yes',
+        className: 'library__act--off',
+        onClick: () => {
+          if (keepShelf(removePatch(shelf, entry.name))) {
+            setStatus(`“${entry.name}” is off your shelf.`, 'Removed.');
+          }
+        },
+      },
+      { label: 'no', onClick: () => fillMine($('mine')) },
+    ]));
+    item.querySelector('.library__act').focus();
+  }
+
+  /**
+   * Rename in the cell the name is in.
+   *
+   * The name is the shelf's key, so this is the one edit that can collide with
+   * another patch. It is refused rather than allowed to overwrite one, and the
+   * patch's own name goes with it: they would disagree otherwise, and opening
+   * the thing would put the old name straight back in the patch field.
+   */
+  function askName(item, entry) {
+    item.textContent = '';
+    item.classList.add('library__item--asking');
+    item.title = `Rename “${entry.name}”`;
+
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.className = 'field library__name';
+    field.maxLength = 60;
+    field.value = entry.name;
+    field.setAttribute('aria-label', `A new name for ${entry.name}`);
+
+    const done = () => {
+      const next = field.value.trim();
+      if (!next || next === entry.name) {
+        fillMine($('mine'));
+        return;
       }
+      const patch = readPatch(entry.patch, onPatchLimit);
+      if (patch) patch.name = next;
+      const list = renamePatch(shelf, entry.name, next, patch ? serialize(patch) : null);
+      if (!list) {
+        setStatus(`There is already a patch called “${next}” on your shelf.`, 'Sorry:');
+        fillMine($('mine'));
+        return;
+      }
+      if (keepShelf(list)) setStatus(`“${entry.name}” is “${next}” now.`, 'Renamed.');
+    };
+
+    field.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') done();
+      if (e.key === 'Escape') fillMine($('mine'));
     });
 
-    const no = document.createElement('button');
-    no.type = 'button';
-    no.className = 'library__act';
-    no.textContent = 'no';
-    no.addEventListener('click', () => fillMine($('mine')));
-
-    item.append(yes, no);
-    yes.focus();
+    item.append(field, actColumn([
+      { label: 'ok', onClick: done },
+      { label: 'no', onClick: () => fillMine($('mine')) },
+    ]));
+    field.focus();
+    field.select();
   }
 
   $('keep').addEventListener('click', keepCurrent);

@@ -5,7 +5,7 @@
 // is not a setting here, it is a distance.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, phase, channel, chord, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
+import { downstream, phase, channel, chord, drum, drumLine, KIT, modulate, sounds, GM } from './lib.mjs';
 
 const BEAT = 4; // cells
 const BAR = 16;
@@ -20,12 +20,13 @@ export function housePatch() {
 
   const voice = (row, pulse, { offset, period, min = 1, params, line }) => {
     const clock = addNode(p, createNode('pulse', 0, row, pulse));
-    return downstream(p, clock, {
+    const built = downstream(p, clock, {
       type: 'note',
       cells: phase(LAUNCH, offset, period, min),
       params,
       line,
     });
+    return { clock, ...built };
   };
 
   /* Kick, on every beat. */
@@ -37,7 +38,7 @@ export function housePatch() {
   });
 
   /* Open hat, an eighth later off the same beat. */
-  voice(6, { division: '1/4', velocity: 84 }, {
+  const openHat = voice(6, { division: '1/4', velocity: 84 }, {
     offset: 2,
     period: BEAT,
     params: { ...drum(KIT.openHat), length: 0.18, audition: true },
@@ -53,7 +54,7 @@ export function housePatch() {
   });
 
   /* Closed hats, under everything. */
-  voice(18, { division: '1/16', velocity: 52 }, {
+  const closedHat = voice(18, { division: '1/16', velocity: 52 }, {
     offset: 0,
     period: 1,
     min: 4,
@@ -92,6 +93,17 @@ export function housePatch() {
     params: { degree: 1, octave: 4, length: 0.22, audition: true },
     line: chord(3, [0, 3, 7, 10]),
   });
+
+  /* Four to the floor is a loop on purpose, so what moves is the playing
+   * rather than the pattern: hats that open and close over a couple of bars, a
+   * bass that leans harder some bars than others, and a stab that comes and
+   * goes. Velocity is tone as well as level through a SoundFont, so a hat at a
+   * hundred and a hat at sixty are two different hats. */
+  modulate(p, closedHat.clock, { param: 'velocity', from: 34, to: 86, rate: '1bar' });
+  modulate(p, openHat.clock, { param: 'velocity', from: 58, to: 106, rate: '2bar' });
+  modulate(p, bassClock, { param: 'velocity', from: 84, to: 120, rate: '4bar' });
+  modulate(p, stabClock, { param: 'velocity', from: 52, to: 104, rate: '2bar', phase: 0.4 });
+  modulate(p, stabGate, { param: 'probability', from: 28, to: 82, rate: '8bar' });
 
   return sounds(p, { 2: GM.synthBass, 3: GM.rhodes, 10: GM.electronicKit });
 }

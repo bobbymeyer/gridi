@@ -28,7 +28,7 @@
   ],
   "nodes": [
     {
-      "id": "n1fj",
+      "id": "n116",
       "type": "pulse",
       "col": 0,
       "row": 40,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "id": "n2rf",
+      "id": "n2cd",
       "type": "key",
       "col": 13,
       "row": 40,
@@ -67,7 +67,7 @@
       }
     },
     {
-      "id": "n4b0",
+      "id": "n4hg",
       "type": "pulse",
       "col": 0,
       "row": 0,
@@ -91,7 +91,7 @@
       }
     },
     {
-      "id": "n5lp",
+      "id": "n5cp",
       "type": "split",
       "col": 10,
       "row": 0,
@@ -101,7 +101,7 @@
       }
     },
     {
-      "id": "n720",
+      "id": "n70s",
       "type": "note",
       "col": 20,
       "row": 0,
@@ -118,7 +118,7 @@
       }
     },
     {
-      "id": "n9g3",
+      "id": "n9pb",
       "type": "note",
       "col": 21,
       "row": 5,
@@ -135,7 +135,7 @@
       }
     },
     {
-      "id": "nb2i",
+      "id": "nbxd",
       "type": "note",
       "col": 22,
       "row": 10,
@@ -152,7 +152,7 @@
       }
     },
     {
-      "id": "ndqq",
+      "id": "ndj9",
       "type": "note",
       "col": 25,
       "row": 15,
@@ -169,7 +169,7 @@
       }
     },
     {
-      "id": "nf9o",
+      "id": "nf93",
       "type": "note",
       "col": 28,
       "row": 20,
@@ -186,7 +186,7 @@
       }
     },
     {
-      "id": "nh74",
+      "id": "nhmx",
       "type": "pulse",
       "col": 0,
       "row": 28,
@@ -210,7 +210,7 @@
       }
     },
     {
-      "id": "niwz",
+      "id": "nijc",
       "type": "router",
       "col": 14,
       "row": 28,
@@ -220,7 +220,7 @@
       }
     },
     {
-      "id": "nkav",
+      "id": "nkgo",
       "type": "note",
       "col": 36,
       "row": 28,
@@ -237,7 +237,7 @@
       }
     },
     {
-      "id": "nmq5",
+      "id": "nmnv",
       "type": "note",
       "col": 31,
       "row": 33,
@@ -254,7 +254,7 @@
       }
     },
     {
-      "id": "no92",
+      "id": "no70",
       "type": "pulse",
       "col": 0,
       "row": 56,
@@ -278,7 +278,7 @@
       }
     },
     {
-      "id": "npha",
+      "id": "npty",
       "type": "chance",
       "col": 14,
       "row": 56,
@@ -289,7 +289,7 @@
       }
     },
     {
-      "id": "nrip",
+      "id": "nr4d",
       "type": "router",
       "col": 28,
       "row": 56,
@@ -299,7 +299,7 @@
       }
     },
     {
-      "id": "ntm8",
+      "id": "nt07",
       "type": "note",
       "col": 58,
       "row": 56,
@@ -316,7 +316,7 @@
       }
     },
     {
-      "id": "nv4v",
+      "id": "nvlk",
       "type": "note",
       "col": 53,
       "row": 61,
@@ -333,7 +333,7 @@
       }
     },
     {
-      "id": "nxgt",
+      "id": "nxda",
       "type": "note",
       "col": 48,
       "row": 66,
@@ -350,7 +350,7 @@
       }
     },
     {
-      "id": "nz65",
+      "id": "nznd",
       "type": "note",
       "col": 43,
       "row": 71,
@@ -365,13 +365,173 @@
         "audition": true,
         "ratchet": 1
       }
+    },
+    {
+      "id": "n1170",
+      "type": "lfo",
+      "col": 0,
+      "row": 79,
+      "label": "",
+      "params": {
+        "shape": "drift",
+        "rate": "2bar",
+        "phase": 0,
+        "depth": 1,
+        "min": 58,
+        "max": 106,
+        "resolution": 4,
+        "reset": false,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 100
+      }
+    },
+    {
+      "id": "n12dw",
+      "type": "param",
+      "col": 13,
+      "row": 79,
+      "label": "",
+      "params": {
+        "scope": "node",
+        "target": "n4hg",
+        "param": "velocity",
+        "cc": 74,
+        "mode": "sequence",
+        "values": "1 3 5 7",
+        "amount": 1,
+        "min": 0,
+        "max": 127
+      }
+    },
+    {
+      "id": "n14jz",
+      "type": "lfo",
+      "col": 0,
+      "row": 87,
+      "label": "",
+      "params": {
+        "shape": "drift",
+        "rate": "4bar",
+        "phase": 0,
+        "depth": 1,
+        "min": 78,
+        "max": 114,
+        "resolution": 4,
+        "reset": false,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 100
+      }
+    },
+    {
+      "id": "n15rc",
+      "type": "param",
+      "col": 13,
+      "row": 87,
+      "label": "",
+      "params": {
+        "scope": "node",
+        "target": "nhmx",
+        "param": "velocity",
+        "cc": 74,
+        "mode": "sequence",
+        "values": "1 3 5 7",
+        "amount": 1,
+        "min": 0,
+        "max": 127
+      }
+    },
+    {
+      "id": "n17dk",
+      "type": "lfo",
+      "col": 0,
+      "row": 95,
+      "label": "",
+      "params": {
+        "shape": "drift",
+        "rate": "1bar",
+        "phase": 0,
+        "depth": 1,
+        "min": 46,
+        "max": 102,
+        "resolution": 4,
+        "reset": false,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 100
+      }
+    },
+    {
+      "id": "n18ao",
+      "type": "param",
+      "col": 13,
+      "row": 95,
+      "label": "",
+      "params": {
+        "scope": "node",
+        "target": "no70",
+        "param": "velocity",
+        "cc": 74,
+        "mode": "sequence",
+        "values": "1 3 5 7",
+        "amount": 1,
+        "min": 0,
+        "max": 127
+      }
+    },
+    {
+      "id": "n1a31",
+      "type": "lfo",
+      "col": 0,
+      "row": 103,
+      "label": "",
+      "params": {
+        "shape": "drift",
+        "rate": "8bar",
+        "phase": 0,
+        "depth": 1,
+        "min": 0,
+        "max": 15,
+        "resolution": 4,
+        "reset": false,
+        "scaleMode": "project",
+        "scale": "minPent",
+        "root": 0,
+        "channel": 1,
+        "velocity": 100
+      }
+    },
+    {
+      "id": "n1b45",
+      "type": "param",
+      "col": 13,
+      "row": 103,
+      "label": "",
+      "params": {
+        "scope": "node",
+        "target": "no70",
+        "param": "euclidRotate",
+        "cc": 74,
+        "mode": "sequence",
+        "values": "1 3 5 7",
+        "amount": 1,
+        "min": 0,
+        "max": 127
+      }
     }
   ],
   "lines": [
     {
-      "id": "l34h",
-      "from": "n1fj",
-      "to": "n2rf",
+      "id": "l371",
+      "from": "n116",
+      "to": "n2cd",
       "channelMode": "inherit",
       "channels": [
         {
@@ -389,9 +549,9 @@
       "weight": 1
     },
     {
-      "id": "l68j",
-      "from": "n4b0",
-      "to": "n5lp",
+      "id": "l6as",
+      "from": "n4hg",
+      "to": "n5cp",
       "channelMode": "inherit",
       "channels": [
         {
@@ -409,9 +569,9 @@
       "weight": 1
     },
     {
-      "id": "l8f2",
-      "from": "n5lp",
-      "to": "n720",
+      "id": "l8xy",
+      "from": "n5cp",
+      "to": "n70s",
       "channelMode": "set",
       "channels": [
         {
@@ -429,9 +589,9 @@
       "weight": 1
     },
     {
-      "id": "lani",
-      "from": "n5lp",
-      "to": "n9g3",
+      "id": "lauq",
+      "from": "n5cp",
+      "to": "n9pb",
       "channelMode": "set",
       "channels": [
         {
@@ -449,9 +609,9 @@
       "weight": 1
     },
     {
-      "id": "lces",
-      "from": "n5lp",
-      "to": "nb2i",
+      "id": "lchf",
+      "from": "n5cp",
+      "to": "nbxd",
       "channelMode": "set",
       "channels": [
         {
@@ -469,9 +629,9 @@
       "weight": 1
     },
     {
-      "id": "le9a",
-      "from": "n5lp",
-      "to": "ndqq",
+      "id": "le3z",
+      "from": "n5cp",
+      "to": "ndj9",
       "channelMode": "set",
       "channels": [
         {
@@ -489,9 +649,9 @@
       "weight": 1
     },
     {
-      "id": "lgrl",
-      "from": "n5lp",
-      "to": "nf9o",
+      "id": "lgr9",
+      "from": "n5cp",
+      "to": "nf93",
       "channelMode": "set",
       "channels": [
         {
@@ -509,9 +669,9 @@
       "weight": 1
     },
     {
-      "id": "ljaq",
-      "from": "nh74",
-      "to": "niwz",
+      "id": "ljsk",
+      "from": "nhmx",
+      "to": "nijc",
       "channelMode": "inherit",
       "channels": [
         {
@@ -529,9 +689,9 @@
       "weight": 1
     },
     {
-      "id": "ll7e",
-      "from": "niwz",
-      "to": "nkav",
+      "id": "llu0",
+      "from": "nijc",
+      "to": "nkgo",
       "channelMode": "set",
       "channels": [
         {
@@ -549,9 +709,9 @@
       "weight": 1
     },
     {
-      "id": "lnkh",
-      "from": "niwz",
-      "to": "nmq5",
+      "id": "lnqq",
+      "from": "nijc",
+      "to": "nmnv",
       "channelMode": "set",
       "channels": [
         {
@@ -569,9 +729,9 @@
       "weight": 1
     },
     {
-      "id": "lqof",
-      "from": "no92",
-      "to": "npha",
+      "id": "lq1n",
+      "from": "no70",
+      "to": "npty",
       "channelMode": "inherit",
       "channels": [
         {
@@ -589,9 +749,9 @@
       "weight": 1
     },
     {
-      "id": "ls40",
-      "from": "npha",
-      "to": "nrip",
+      "id": "lslf",
+      "from": "npty",
+      "to": "nr4d",
       "channelMode": "inherit",
       "channels": [
         {
@@ -609,9 +769,9 @@
       "weight": 1
     },
     {
-      "id": "lu57",
-      "from": "nrip",
-      "to": "ntm8",
+      "id": "lu7d",
+      "from": "nr4d",
+      "to": "nt07",
       "channelMode": "set",
       "channels": [
         {
@@ -629,9 +789,9 @@
       "weight": 1
     },
     {
-      "id": "lw0m",
-      "from": "nrip",
-      "to": "nv4v",
+      "id": "lwhv",
+      "from": "nr4d",
+      "to": "nvlk",
       "channelMode": "set",
       "channels": [
         {
@@ -649,9 +809,9 @@
       "weight": 1
     },
     {
-      "id": "lypv",
-      "from": "nrip",
-      "to": "nxgt",
+      "id": "ly4j",
+      "from": "nr4d",
+      "to": "nxda",
       "channelMode": "set",
       "channels": [
         {
@@ -669,14 +829,94 @@
       "weight": 1
     },
     {
-      "id": "l1024",
-      "from": "nrip",
-      "to": "nz65",
+      "id": "l1008",
+      "from": "nr4d",
+      "to": "nznd",
       "channelMode": "set",
       "channels": [
         {
           "out": "A",
           "ch": 4,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "inherit",
+      "scale": "minPent",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l13fx",
+      "from": "n1170",
+      "to": "n12dw",
+      "channelMode": "inherit",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 1,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "inherit",
+      "scale": "minPent",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l16bw",
+      "from": "n14jz",
+      "to": "n15rc",
+      "channelMode": "inherit",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 1,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "inherit",
+      "scale": "minPent",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l19sj",
+      "from": "n17dk",
+      "to": "n18ao",
+      "channelMode": "inherit",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 1,
+          "transpose": 0,
+          "velocity": null
+        }
+      ],
+      "scaleMode": "inherit",
+      "scale": "minPent",
+      "root": 0,
+      "delay": 0,
+      "muted": false,
+      "weight": 1
+    },
+    {
+      "id": "l1cl9",
+      "from": "n1a31",
+      "to": "n1b45",
+      "channelMode": "inherit",
+      "channels": [
+        {
+          "out": "A",
+          "ch": 1,
           "transpose": 0,
           "velocity": null
         }

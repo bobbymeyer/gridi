@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  readShelf, writeShelf, keepPatch, removePatch, copyName, indexOfName,
+  readShelf, writeShelf, keepPatch, removePatch, renamePatch, copyName, indexOfName,
 } from '../src/shelf.js';
 
 const patch = (name) => `{"app":"gridi","name":"${name}"}`;
@@ -63,6 +63,25 @@ test('removing takes one entry and leaves the rest', () => {
   assert.deepEqual(list.map((e) => e.name), ['b']);
   assert.deepEqual(removePatch(list, 'nothing here').map((e) => e.name), ['b'],
     'removing what is not there changes nothing');
+});
+
+test('renaming keeps the entry where it is, and takes the patch with it', () => {
+  let list = keepPatch([], 'one', patch('one'), 1);
+  list = keepPatch(list, 'two', patch('two'), 2);
+  const next = renamePatch(list, 'one', 'uno', patch('uno'));
+  assert.deepEqual(next.map((e) => e.name), ['two', 'uno'], 'the order is untouched');
+  assert.equal(next[1].patch, patch('uno'), 'and the patch inside carries the new name');
+  assert.equal(next[1].saved, 1, 'renaming is not re-keeping');
+});
+
+test('renaming onto a name in use is refused rather than silently replacing', () => {
+  let list = keepPatch([], 'one', patch('one'), 1);
+  list = keepPatch(list, 'two', patch('two'), 2);
+  assert.equal(renamePatch(list, 'one', 'TWO'), null, 'case included');
+  assert.equal(renamePatch(list, 'nothing here', 'three'), null, 'and nothing to rename is null too');
+  const same = renamePatch(list, 'one', 'One');
+  assert.ok(same, 'but its own name, cased differently, is a rename and not a clash');
+  assert.deepEqual(same.map((e) => e.name), ['two', 'One']);
 });
 
 test('a copy is named after what it was copied from, and counts up', () => {

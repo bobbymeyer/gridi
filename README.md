@@ -239,15 +239,17 @@ save, open, sounds — sit over two rows of patches. Picking one opens it like
 any other patch, undo included, and the row stays where it is, so the shelf is
 still there to try the next one from.
 
-**ships with** is the five below, each with what it is. The **+** on one copies
-it to the row underneath, under a name of its own — "Bossa Nova copy" — and
-leaves the canvas alone, because copying is not opening.
+**ships with** is the five below, each with what it is. **Copy** on one puts it
+on the row underneath under a name of its own — "Bossa Nova copy" — and leaves
+the canvas alone, because copying is not opening.
 
 **yours** is what this browser has been asked to keep. **Keep** puts the patch
 on the grid there, under whatever it is called; keeping it again under the same
-name replaces it, which is what saving twice means anywhere else. **×** takes
-one off, and asks first, because that is the one thing here that undo cannot
-reach. They live in this browser's local storage and nowhere else — no account,
+name replaces it, which is what saving twice means anywhere else. **Rename**
+edits the name in the cell it is in, and takes the patch's own name with it;
+renaming onto a name already on the shelf is refused rather than allowed to
+overwrite it. **Remove** takes one off, and asks first, because that is the one
+thing here that undo cannot reach. They live in this browser's local storage and nowhere else — no account,
 no sync, gone with the site data. **Save** is still how a patch leaves the
 machine.
 
@@ -274,6 +276,29 @@ The figures the percussion patches use, in sixteenths from the downbeat:
 
 Drum voices are pinned with a chromatic line rooted at C, so a Note node's
 degree is a General MIDI note number and the key never moves them.
+
+### what keeps them moving
+
+Every one of these patches hangs a few LFOs off the side of itself, wired to
+nothing that sounds. Each drifts one number on one node — a clock's velocity, a
+Chance node's odds, the rotation of a Euclid figure — and because they are
+wired to nothing, they cannot move anybody's timing.
+
+Velocity is the one worth understanding. A SoundFont routes it to filter cutoff
+as well as to loudness, so a part played at one velocity is not merely
+undynamic: it is one timbre, from the first bar to the last. That is what made
+these sound like a demonstration rather than like playing. A CC sweep is no
+help — a controller goes out of the MIDI port and straight past the player
+built into Gridi, which reads a font's velocity and key routings and nothing
+else.
+
+The shape is **drift**, which eases between hashed values instead of coming
+round: the twentieth bar is not the fourth, and the same seed gives the same
+twentieth bar every time. Rates that share no factors — one bar against two
+against four — mean the parts are never in the same place twice. Rendered for a
+minute and a half, every channel of every patch now plays at between twenty
+and seventy velocities, and no bar is an exact repeat of an earlier one; both
+are checked in `tests/library.test.js`.
 
 Patches live in `patches/`, listed in `patches/index.json`. Add one by saving a
 patch into that folder and adding a line to the index. The ones that ship were
@@ -417,8 +442,9 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | Open a patch that ships with Gridi | The library tab |
 | Choose what each channel plays | Sounds, on the library tab |
 | Keep a patch in this browser | Keep, on the library tab |
-| Copy a patch that ships | The + on its cell, which puts it under **yours** |
-| Take a kept patch off the shelf | The × on its cell |
+| Copy a patch that ships | Copy, on its cell, which puts it under **yours** |
+| Rename a kept patch | Rename, on its cell |
+| Take a kept patch off the shelf | Remove, on its cell |
 | Play through a SoundFont | Drop a .sf2 on the canvas |
 | Delete selection | Del or Backspace |
 | Duplicate node | D |
@@ -516,7 +542,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 344 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 348 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf` and `geometry` have no DOM,
 audio or MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at
