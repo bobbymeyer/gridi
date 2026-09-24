@@ -69,6 +69,25 @@ export function keepPatch(list, name, patch, now = Date.now()) {
   return [entry, ...rest];
 }
 
+/**
+ * Rename an entry, keeping its place on the shelf.
+ *
+ * The name is the key, so a rename onto a name already in use would be a
+ * silent replacement of somebody else's patch: that comes back as null instead,
+ * for the caller to explain. `patch` is the serialized patch with its own name
+ * rewritten to match — the two would disagree otherwise, and opening it would
+ * put the old name back in the patch field.
+ */
+export function renamePatch(list, from, to, patch) {
+  const at = indexOfName(list, from);
+  if (at === -1) return null;
+  const taken = indexOfName(list, to);
+  if (taken !== -1 && taken !== at) return null;
+  const next = [...list];
+  next[at] = { ...next[at], name: clean(to), patch: patch ?? next[at].patch };
+  return next;
+}
+
 export function removePatch(list, name) {
   const at = indexOfName(list, name);
   return at === -1 ? list : list.filter((_, i) => i !== at);

@@ -8,7 +8,7 @@
 // second is a little over twenty-two hours.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, channel, sounds, GM } from './lib.mjs';
+import { downstream, channel, modulate, sounds, GM } from './lib.mjs';
 
 /** Loop lengths in beats, and what each voice plays when its turn comes. */
 const LOOPS = [
@@ -26,6 +26,7 @@ export function ambientPatch() {
   p.root = 4; // E
   p.scale = 'majPent';
 
+  const clocks = [];
   LOOPS.forEach((loop, i) => {
     // A quarter-note division taken one in the time of `beats` gives a pulse
     // every `beats` beats, which is this voice's loop length.
@@ -52,6 +53,34 @@ export function ambientPatch() {
         audition: true,
       },
       line: channel(1),
+    });
+    clocks.push(clock);
+  });
+
+  /* What the CC sweep below cannot do.
+   *
+   * A controller goes out of the MIDI port and past the player built into
+   * gridi, which reads a SoundFont's velocity routings and nothing else — so
+   * on this page the sweep moved a filter on somebody else's synth and left
+   * these five voices sounding identical every time they came round. Velocity
+   * is the modulation the font hears, on loudness and on brightness both, and
+   * one drift per loop at the loop's own rate means each voice swells on its
+   * own schedule. Five schedules that share no factors do not come back into
+   * line inside a listening. */
+  const SWELL = [
+    { rate: '2bar', phase: 0 },
+    { rate: '4bar', phase: 0.3 },
+    { rate: '8bar', phase: 0.6 },
+    { rate: '4bar', phase: 0.85 },
+    { rate: '8bar', phase: 0.15 },
+  ];
+  clocks.forEach((clock, i) => {
+    const { velocity } = LOOPS[i];
+    modulate(p, clock, {
+      param: 'velocity',
+      from: Math.max(16, velocity - 20),
+      to: Math.min(127, velocity + 40),
+      ...SWELL[i],
     });
   });
 

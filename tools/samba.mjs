@@ -5,7 +5,7 @@
 // the caixa, which is the whole of why it lands on two and four.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, fan, phase, channel, drum, drumLine, KIT, sounds, GM } from './lib.mjs';
+import { downstream, fan, phase, channel, drum, drumLine, KIT, modulate, sounds, GM } from './lib.mjs';
 
 const BAR = 16; // cells, at a sixteenth a cell
 const LAUNCH = 8; // where the bar line falls, once everything is in
@@ -31,7 +31,10 @@ export function sambaPatch() {
   const accent = downstream(p, caixaClock, {
     type: 'param',
     cells: 4,
-    params: { scope: 'signal', param: 'velocity', mode: 'sequence', values: '104 62 78 62' },
+    // Seven accents against a bar of sixteen: the figure walks around the bar
+    // and comes back to where it started seven bars later, which is a samba
+    // caixa and not a drum machine.
+    params: { scope: 'signal', param: 'velocity', mode: 'sequence', values: '106 64 80 62 92 68 74' },
   }).node;
   downstream(p, accent, {
     type: 'note',
@@ -108,6 +111,18 @@ export function sambaPatch() {
       line: channel(2),
     });
   });
+
+  /* A samba bateria is a room of people, and people lean. Each of these drifts
+   * one player's velocity on its own cycle — which through a SoundFont moves
+   * the tone of the hit as well as its weight — so no two bars are struck the
+   * same way even where the pattern repeats exactly. */
+  modulate(p, surdoClock, { param: 'velocity', from: 74, to: 120, rate: '4bar' });
+  modulate(p, tamClock, { param: 'velocity', from: 58, to: 110, rate: '2bar' });
+  modulate(p, agogoClock, { param: 'velocity', from: 56, to: 104, rate: '4bar', phase: 0.37 });
+  modulate(p, bassClock, { param: 'velocity', from: 78, to: 116, rate: '4bar', phase: 0.65 });
+  // And the caixa's own hand: how far off the grid it plays, which is the
+  // difference between a machine and somebody's wrist.
+  modulate(p, caixaClock, { param: 'humanize', from: 0, to: 11, rate: '8bar', phase: 0.2 });
 
   return sounds(p, { 2: GM.acousticBass, 10: GM.standardKit });
 }

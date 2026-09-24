@@ -12,7 +12,7 @@
 // a part's cycle that leaves room to draw it.
 
 import { createPatch, createNode, addNode } from '../src/model.js';
-import { downstream, channel, sounds, GM } from './lib.mjs';
+import { downstream, channel, modulate, sounds, GM } from './lib.mjs';
 
 const BAR = 16; // cells, at a sixteenth a cell
 
@@ -120,6 +120,23 @@ export function bossaPatch() {
       line: channel(4),
     });
   });
+
+  /* What keeps it from being the same two bars for ever.
+   *
+   * Nothing below is wired into a part: each is an LFO drifting one number,
+   * and the numbers are the ones a player would be moving anyway. Velocity is
+   * the important one — through a SoundFont it is tone as well as level, so a
+   * guitar at one velocity is one guitar sound and a guitar that breathes is a
+   * player. The rates share no factors, so the three of them are never in the
+   * same place twice. */
+  modulate(p, compClock, { param: 'velocity', from: 58, to: 106, rate: '2bar' });
+  modulate(p, bassClock, { param: 'velocity', from: 78, to: 114, rate: '4bar' });
+  modulate(p, topClock, { param: 'velocity', from: 46, to: 102, rate: '1bar' });
+
+  /* And the figure the melody plays: rotating a Euclid pattern moves its five
+   * hits around the sixteen without changing how many there are, so the line
+   * keeps its density and loses its loop. */
+  modulate(p, topClock, { param: 'euclidRotate', from: 0, to: 15, rate: '8bar' });
 
   // Nylon guitar and upright bass, with a flute on the top line.
   return sounds(p, { 2: GM.acousticBass, 3: GM.nylonGuitar, 4: GM.flute });

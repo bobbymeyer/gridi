@@ -43,6 +43,46 @@ export function downstream(patch, source, { type, cells, rowDelta = 0, params = 
   return { node, line: wire };
 }
 
+/**
+ * A drifting LFO wired to one parameter of one node.
+ *
+ * Velocity is the modulation a SoundFont hears. The bundled font routes it to
+ * loudness and to filter cutoff both, so a moving velocity is a moving tone and
+ * not merely a moving level — and a part played at one velocity for ever is one
+ * sound for ever, however much its rhythm moves. A CC sweep, by contrast, goes
+ * out of the MIDI port and straight past the internal player, which is why
+ * these patches could have plenty moving on the wire and still sound the same
+ * every bar.
+ *
+ * `drift` is the shape because it does not come round: it eases between hashed
+ * values, so the twentieth bar is not the fourth and none of it is random in
+ * the sense of being different every time you press play.
+ *
+ * The modulator hangs off the side of the patch. It is wired to nothing in the
+ * sounding chain, so it cannot change anybody's timing — which is the whole
+ * reason the phases in these files still add up.
+ */
+export function modulate(patch, target, {
+  param, from, to, rate = '4bar', shape = 'drift', phase = 0, resolution = 4, col = 0, row,
+}) {
+  const below = patch.nodes.length ? Math.max(...patch.nodes.map((n) => n.row)) + 8 : 0;
+  const lfo = addNode(patch, createNode('lfo', col, row ?? below, {
+    shape,
+    rate,
+    min: from,
+    max: to,
+    phase,
+    resolution,
+    reset: false, // free-running: it is a slow weather system, not a part
+  }));
+  const { node } = downstream(patch, lfo, {
+    type: 'param',
+    cells: 7,
+    params: { scope: 'node', target: target.id, param, mode: 'sequence', min: 0, max: 127 },
+  });
+  return { lfo, param: node };
+}
+
 /** A line that sends to one MIDI channel. */
 export function channel(ch, transpose = 0) {
   return { channelMode: 'set', channels: [{ ...createChannel(ch, 'A'), transpose }] };

@@ -13,6 +13,8 @@ import { lineCells } from '../src/geometry.js';
 import { gridBeats } from '../src/rhythm.js';
 import { LIBRARY } from '../tools/build.mjs';
 import { GM_KITS } from '../src/gm.js';
+import { Engine } from '../src/engine.js';
+import { fakeAudio, fakeMidi } from './helpers.js';
 
 const read = (file) => readFileSync(new URL(`../patches/${file}`, import.meta.url), 'utf8');
 const index = JSON.parse(read('index.json'));
@@ -137,7 +139,15 @@ function shape(patch) {
     grid: patch.grid,
     root: patch.root,
     scale: patch.scale,
-    nodes: patch.nodes.map((n) => ({ type: n.type, col: n.col, row: n.row, params: n.params })),
+    // A Param node names the node it modulates, and an id is minted fresh on
+    // every build, so the reference is compared the way a line is: as a
+    // position in the list rather than as a name.
+    nodes: patch.nodes.map((n) => ({
+      type: n.type,
+      col: n.col,
+      row: n.row,
+      params: n.params.target ? { ...n.params, target: at.get(n.params.target) ?? null } : n.params,
+    })),
     lines: patch.lines.map((l) => ({
       from: at.get(l.from),
       to: at.get(l.to),
@@ -161,6 +171,67 @@ test('every file in the library is what its builder produces', () => {
       shape(entry.build()),
       `${entry.file} is out of date -- run node tools/build.mjs`,
     );
+  }
+});
+
+/* ------------------------------------------------------- how they are played */
+
+/** Every note a patch sends in `seconds` of playing, against a hand-driven clock. */
+function play(patch, seconds, step = 0.02) {
+  const audio = fakeAudio();
+  const midi = fakeMidi();
+  const engine = new Engine({ getPatch: () => patch, audio, midi });
+  engine.start();
+  for (let t = 0; t < seconds; t += step) {
+    audio.t = t;
+    engine.tick();
+  }
+  return midi.notes.filter((n) => n.at < seconds).sort((a, b) => a.at - b.at);
+}
+
+test('every library patch plays with a moving hand', () => {
+  // A part played at one velocity is one sound for ever. Through a SoundFont
+  // velocity reaches filter cutoff as well as loudness, so a flat part is not
+  // merely undynamic, it is literally one timbre from the first bar to the
+  // last — which is how these patches came to sound like a demo of a drum
+  // machine rather than like anybody playing.
+  for (const entry of index.patches) {
+    const patch = readPatch(read(entry.file));
+    const byChannel = new Map();
+    for (const note of play(patch, 90)) {
+      if (!byChannel.has(note.ch)) byChannel.set(note.ch, []);
+      byChannel.get(note.ch).push(note.vel);
+    }
+    assert.ok(byChannel.size, `${entry.file} plays something`);
+    for (const [ch, vels] of byChannel) {
+      const levels = new Set(vels).size;
+      assert.ok(levels >= 8, `${entry.file} plays channel ${ch} at ${levels} velocities, wanted 8 or more`);
+      assert.ok(Math.max(...vels) - Math.min(...vels) >= 20,
+        `${entry.file} keeps channel ${ch} inside ${Math.max(...vels) - Math.min(...vels)} velocities of itself`);
+    }
+  }
+});
+
+test('no library patch is the same bar twice', () => {
+  // The point of the thing is that distance, chance and a drifting hand add up
+  // to music that does not come round. A bar that is an exact repeat of an
+  // earlier one -- every hit at the same place, on the same note, at the same
+  // weight -- means something has stopped moving.
+  for (const entry of index.patches) {
+    const patch = readPatch(read(entry.file));
+    const seconds = 90;
+    const bar = (60 / patch.bpm) * 4;
+    const notes = play(patch, seconds);
+    const bars = Math.floor(seconds / bar);
+    const seen = new Set();
+    for (let b = 0; b < bars; b += 1) {
+      seen.add(notes
+        .filter((n) => n.at >= b * bar && n.at < (b + 1) * bar)
+        .map((n) => `${Math.round(((n.at - b * bar) / bar) * 96)}:${n.ch}:${n.note}:${n.vel}`)
+        .join(','));
+    }
+    const unique = (seen.size / bars) * 100;
+    assert.ok(unique >= 90, `${entry.file} repeats: only ${unique.toFixed(0)}% of its ${bars} bars are new`);
   }
 });
 
