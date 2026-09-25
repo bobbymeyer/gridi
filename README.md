@@ -261,7 +261,7 @@ to make a sound.
 | Patch | BPM | What it is |
 | --- | --- | --- |
 | Bossa Nova | 132 | Comp, bass, melody and a latched key on ii-V-I. The clave is five lines of different lengths out of one Split. |
-| Samba | 96 | Caixa, surdo, tamborim, agogô and a bass. The surdo's line runs a beat further than the rest, which is what puts it on two and four. |
+| Samba | 100 | A bateria — surdo, caixa, ganzá, tamborim, agogô, cuíca — with a cavaquinho chopping off the beat, a bass that pushes into the surdo, and a flute over the top. Four bars of i-iv-i-v, all minor sevenths, so one shape in the cavaquinho's hand is right in every bar. |
 | House | 124 | Four to the floor, offbeat bass and a stab. The open hat shares the kick's clock and is drawn an eighth longer. |
 | Hip-Hop | 88 | Boom-bap kit with swung hats. One clock a bar, three kicks at their own distances. |
 | Ambient | 60 | Five loops of 5, 7, 11, 13 and 16 beats, after the tape loops on *Music for Airports*. They come back into line once every 22 hours. |
@@ -271,11 +271,20 @@ The figures the percussion patches use, in sixteenths from the downbeat:
 | Figure | Hits |
 | --- | --- |
 | Bossa clave, 3-2 | 0, 6, 12, 20, 28, over two bars |
-| Samba tamborim | 0, 3, 6, 10, 12, 14 |
+| Samba surdo | 0 muffled, 4 open, in every 2/4 bar — the stroke everything else leans on |
+| Samba caixa | sixteenths throughout, accented 0, 3, 6 of every eight: three, three, two |
+| Samba tamborim | 0, 2, 3, 5, 9, 11, 12, 14, over two 2/4 bars |
+| Samba cavaquinho | 3 and 6 of every 2/4 bar |
 | Hip-hop kick | 0, 7, 10 |
 
 Drum voices are pinned with a chromatic line rooted at C, so a Note node's
 degree is a General MIDI note number and the key never moves them.
+
+Which drum matters as much as which hit. General MIDI's standard kit has a mute
+surdo and an open one at 86 and 87, a cuíca at 78 and 79, a cabasa at 69 and a
+pair of timbales at 65 and 66 — a samba played on a low tom and a tambourine
+instead is a drum kit doing an impression of a bateria, which is what this one
+used to be. The cavaquinho is General MIDI's banjo, its nearest neighbour.
 
 ### what keeps them moving
 
@@ -542,7 +551,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 348 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 350 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf` and `geometry` have no DOM,
 audio or MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

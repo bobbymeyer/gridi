@@ -273,22 +273,78 @@ function figure(patch, split) {
   return cells.map((c) => c - cells[0]);
 }
 
-test('the samba tamborim is the figure it says it is', () => {
+/** Which General MIDI drum a Note node is striking, from the degree it fires. */
+const drumNote = (node) => node.params.degree - 1 + 12 * (node.params.octave + 1);
+
+/** A drum is a note on a line pinned chromatic, which is how the kit is played. */
+const isDrumLine = (line) => line.scaleMode === 'set' && line.scale === 'chromatic';
+
+/** The Split whose branches strike a given drum. */
+function splitFor(patch, note) {
+  return patch.nodes.find((n) => n.type === 'split'
+    && outgoing(patch, n.id).some((l) => {
+      const to = nodeById(patch, l.to);
+      return isDrumLine(l) && to.type === 'note' && drumNote(to) === note;
+    }));
+}
+
+/** The Split whose branches play on one MIDI channel. */
+function splitOn(patch, ch) {
+  return patch.nodes.find((n) => n.type === 'split'
+    && outgoing(patch, n.id).every((l) => l.channels?.[0]?.ch === ch));
+}
+
+test('the samba is played on the bateria General MIDI actually has', () => {
+  // The first version of this patch was a drum kit doing an impression: the
+  // surdo was a low tom and the tamborim a tambourine. The standard kit has a
+  // mute surdo, an open one, a cuíca and a cabasa at their own note numbers,
+  // and the difference between those and a tom is the whole patch.
   const patch = readPatch(read('samba.json'));
-  const split = patch.nodes.find((n) => n.type === 'split');
-  assert.deepEqual(figure(patch, split), [0, 3, 6, 10, 12, 14]);
+  const struck = new Set(patch.lines
+    .filter(isDrumLine)
+    .map((l) => nodeById(patch, l.to))
+    .filter((n) => n.type === 'note')
+    .map(drumNote));
+  for (const [name, note] of [
+    ['mute surdo', 86], ['open surdo', 87], ['caixa', 38], ['cabasa', 69],
+    ['high timbale', 65], ['high agogô', 67], ['low agogô', 68],
+    ['mute cuíca', 78], ['open cuíca', 79],
+  ]) {
+    assert.ok(struck.has(note), `samba.json has nobody on the ${name}`);
+  }
 });
 
-test('the samba surdo falls a beat later than the bar, on two and four', () => {
+test('the samba tamborim is the figure it says it is', () => {
   const patch = readPatch(read('samba.json'));
-  const isDrum = (note) => (n) => n.type === 'note' && n.params.degree === (note % 12) + 1;
-  const surdo = clockFor(patch, isDrum(41));
-  const tamborim = patch.nodes.find((n) => n.type === 'split');
-  const tamClock = clockFor(patch, (n) => n.id === tamborim.id);
-  // The surdo repeats every two bars, the tamborim every one. A beat between
-  // them, however many whole cycles each has had to wait to be drawable.
-  const gap = ((chain(patch, surdo) - chain(patch, tamClock)) % 16 + 16) % 16;
-  assert.equal(gap, 4, 'a beat, which is what puts the surdo on two and four');
+  assert.deepEqual(figure(patch, splitFor(patch, 65)), [0, 2, 3, 5, 9, 11, 12, 14]);
+});
+
+test('the samba surdo is muffled on the one and open on the two', () => {
+  const patch = readPatch(read('samba.json'));
+  const split = splitFor(patch, 87);
+  // Two branches a beat apart, on a part that comes round every half bar: the
+  // mute stroke on the one of each 2/4 bar, the open one on its two, which is
+  // where samba lands.
+  assert.deepEqual(figure(patch, split), [0, 4]);
+  const strokes = outgoing(patch, split.id)
+    .map((l) => ({ node: nodeById(patch, l.to), cells: lineCells(split, nodeById(patch, l.to)) }))
+    .sort((a, b) => a.cells - b.cells)
+    .map(({ node }) => ({ note: drumNote(node), velocity: node.params.velocity }));
+  assert.equal(strokes[0].note, 86, 'the nearer branch is the mute surdo');
+  assert.equal(strokes[1].note, 87, 'and the further one, a beat later, is the open');
+  assert.ok(strokes[1].velocity > strokes[0].velocity + 30, 'the open stroke is the loud one');
+});
+
+test('the samba cavaquinho chops off the beat', () => {
+  const patch = readPatch(read('samba.json'));
+  // A cavaquinho on the beat is a metronome. Its two chords a bar sit on the
+  // second and the fourth sixteenth after it, which is the lean in samba.
+  const comp = splitOn(patch, 3);
+  assert.deepEqual(figure(patch, comp), [0, 3]);
+  const clock = clockFor(patch, (n) => n.id === comp.id);
+  const surdo = clockFor(patch, (n) => n.type === 'split' && n.id === splitFor(patch, 87).id);
+  const gap = ((chain(patch, clock) - chain(patch, surdo)) % 8 + 8) % 8;
+  assert.equal(gap, 3, 'three sixteenths after the surdo takes the bar');
 });
 
 test('the house open hat is the kick clock, an eighth further out', () => {
