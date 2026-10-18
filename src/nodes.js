@@ -240,6 +240,25 @@ export const NODE_TYPES = {
     ],
   },
 
+  portal: {
+    label: 'portal',
+    role: 'elsewhere, now',
+    color: 'blue',
+    glyph: 'portal',
+    inputs: 1,
+    outputs: 'many',
+    blurb: 'A hole in the grid. What arrives here leaves from the other portals with the same letter, on the same beat.',
+    defaults: { pair: 'A' },
+    params: [
+      {
+        key: 'pair',
+        label: 'letter',
+        type: 'text',
+        hint: 'Portals sharing a letter are the same hole. A pulse in one comes out of all the others.',
+      },
+      { key: 'ends', label: 'other ends', type: 'readout' },
+    ],
+  },
   note: {
     label: 'note',
     role: 'MIDI trigger',

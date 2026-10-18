@@ -97,6 +97,7 @@ Select a line to read its length in cells and what that comes to in beats.
 | Logic | many | many | Fires when incoming pulses line up inside a window. |
 | Chance | 1 | many | Lets a pulse through a set percentage of the time. |
 | Router | 1 | many | Sends each pulse down a single outgoing line. |
+| Portal | 1 | many | A hole in the grid: what arrives leaves from the other portals on its letter, on the same beat. |
 | Note | 1 | many | Fires a scale degree as MIDI on every channel the line carries. |
 | Voice | 1 | many | Two oscillators, a resonant filter and an ADSR, in the browser. |
 | LFO | 1 | many | Sends a moving value down its lines many times a beat. |
@@ -138,6 +139,34 @@ Select a line to read its length in cells and what that comes to in beats.
 | Chance | Pass | 0–100% |
 | Chance | Mode | Free, Drift |
 | Router | Mode | Cycle, Ping, Rand, No rpt |
+
+### Portal
+
+| Control | Range |
+| --- | --- |
+| Letter | Any word. Portals sharing one are the same hole; case and spaces are ignored. |
+
+Distance is time here, which is the whole idea and occasionally the whole
+problem: a part that belongs on the other side of the grid has to be drawn on
+the other side of the grid, and the drawing costs beats nobody asked for. A
+portal is the exception, and the only one.
+
+What arrives at a portal leaves from every other portal on its letter, at the
+same instant, and carries on down their lines at the usual price. Nothing comes
+back out of the portal it went into — a pulse that leaves where it arrived is
+what a line is for — so two ends of one letter are a two-way hole, and three are
+one way in and two ways out. A portal with nobody else on its letter swallows
+what it is given, and says so.
+
+Waves go through as well, so an LFO can reach a Param on the far side of a patch
+without a line long enough to be a rhythm in its own right.
+
+Select one and the hole is drawn: a dashed line to wherever its other ends are.
+Nothing travels along it — the pulse is already there — which is why it is
+dashed and thin and nothing moves on it.
+
+The hop count rises on the way through, so a ring of portals ends at the same
+limit as any other feedback rather than spinning inside a single tick.
 
 ### Note
 
@@ -437,6 +466,7 @@ of one pitch on one channel cannot overlap. Use different pitches or channels.
 | --- | --- |
 | Play / stop | Space, or Play |
 | Place a node | Click a type in the left rail, then click the grid. Shift keeps placing. |
+| Move a pulse across the grid for nothing | Two Portals on the same letter |
 | Show the node names | The chevron beside **nodes**. The rail keeps to its colours until then, and remembers which way it was left. |
 | Fold the inspector away | The chevron in its head. Selecting something opens it again. |
 | Project settings, the library, MIDI ports | The three tabs in the header |
@@ -551,7 +581,7 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 350 tests under `node --test`. `engine`, `model`, `music`,
+`npm test` runs 356 tests under `node --test`. `engine`, `model`, `music`,
 `rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf` and `geometry` have no DOM,
 audio or MIDI dependencies and are tested directly; the engine runs against a fake clock
 and stub outputs. The synth is checked in a browser at

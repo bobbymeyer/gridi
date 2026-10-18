@@ -607,3 +607,131 @@ test('a key set on the line still beats the project, however late the pulse is',
   assert.ok(notes.length > 0);
   for (const hit of notes) assert.equal(hit.note, 65, 'F4, from the line');
 });
+
+/* ------------------------------------------------------------------ portal */
+
+/**
+ * A clock, a portal to fall into, a portal to come out of, and a note on the
+ * far side of the second one. `gap` is how far the exit's note is drawn.
+ */
+function portalPatch({ letter = 'A', exitLetter = letter, gap = 10 } = {}) {
+  const p = createPatch('portal');
+  p.bpm = 120;
+  p.grid = '1/16';
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/4', velocity: 100 }));
+  const into = addNode(p, createNode('portal', 10, 0, { pair: letter }));
+  const outOf = addNode(p, createNode('portal', 0, 20, { pair: exitLetter }));
+  const note = addNode(p, createNode('note', gap, 20, { degree: 1, octave: 4 }));
+  connect(p, clock.id, into.id);
+  connect(p, outOf.id, note.id, { channelMode: 'set', channels: [createChannel(1, 'A')] });
+  return { p, clock, into, outOf, note };
+}
+
+test('a portal puts the pulse out of its other end on the same beat', () => {
+  // The claim is that the hole is free, so the test is a race: eight cells of
+  // line against four cells, a portal, and four more. If the hole costs
+  // anything at all the two streams come apart.
+  const direct = createPatch('direct');
+  direct.bpm = 120;
+  direct.grid = '1/16';
+  const dClock = addNode(direct, createNode('pulse', 0, 0, { division: '1/4', velocity: 100 }));
+  const dNote = addNode(direct, createNode('note', 14, 0, { degree: 1, octave: 4 }));
+  connect(direct, dClock.id, dNote.id, { channelMode: 'set', channels: [createChannel(1, 'A')] });
+  assert.equal(lineCells(dClock, dNote), 8, 'eight cells the long way round');
+
+  const { p, clock, into, outOf, note } = portalPatch();
+  assert.equal(lineCells(clock, into) + lineCells(outOf, note), 8, 'and eight through the hole');
+
+  const through = run(p, 4).notes;
+  const around = run(direct, 4).notes;
+  assert.ok(through.length >= 4, 'the far side of the hole is playing');
+  assert.deepEqual(
+    through.map((n) => n.at.toFixed(6)),
+    around.map((n) => n.at.toFixed(6)),
+    'the hole took time',
+  );
+  // And it is still a clock: a quarter note at 120 is half a second.
+  assert.ok(Math.abs((through[1].at - through[0].at) - 0.5) < 1e-9);
+});
+
+test('a portal with nobody on its letter is a dead end', () => {
+  const { p } = portalPatch({ letter: 'A', exitLetter: 'B' });
+  const { notes } = run(p, 4);
+  assert.equal(notes.length, 0, 'the pulse went into the hole and stayed there');
+});
+
+test('one portal in is every other portal on the letter out', () => {
+  const p = createPatch('portal');
+  p.bpm = 120;
+  p.grid = '1/16';
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/4' }));
+  const into = addNode(p, createNode('portal', 10, 0, { pair: 'A' }));
+  connect(p, clock.id, into.id);
+  // Two exits on the same letter, each with its own note, drawn the same
+  // distance away so they should sound together.
+  for (const row of [20, 30]) {
+    const exit = addNode(p, createNode('portal', 0, row, { pair: 'a' })); // case is nothing
+    const note = addNode(p, createNode('note', 10, row, { degree: 1, octave: 4 }));
+    connect(p, exit.id, note.id, { channelMode: 'set', channels: [createChannel(1, 'A')] });
+  }
+  const { notes } = run(p, 2.2);
+  assert.ok(notes.length >= 4 && notes.length % 2 === 0, 'both exits, every beat');
+  assert.equal(notes[0].at, notes[1].at, 'and both ends spoke at once');
+  assert.equal(notes[2].at, notes[3].at);
+});
+
+test('nothing comes back out of the portal it went into', () => {
+  // A line out of the entrance is an ordinary line and is left alone; what the
+  // portal must not do is hand the pulse back to itself and play it twice.
+  const p = createPatch('portal');
+  p.bpm = 120;
+  p.grid = '1/16';
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/4' }));
+  const into = addNode(p, createNode('portal', 10, 0, { pair: 'A' }));
+  const outOf = addNode(p, createNode('portal', 0, 20, { pair: 'A' }));
+  const near = addNode(p, createNode('note', 20, 0, { degree: 1, octave: 4 }));
+  const far = addNode(p, createNode('note', 10, 20, { degree: 1, octave: 4 }));
+  connect(p, clock.id, into.id);
+  connect(p, into.id, near.id, { channelMode: 'set', channels: [createChannel(1, 'A')] });
+  connect(p, outOf.id, far.id, { channelMode: 'set', channels: [createChannel(2, 'A')] });
+  const { notes } = run(p, 2.2);
+  assert.equal(notes.filter((n) => n.ch === 1).length, 0,
+    'the entrance swallowed the pulse rather than sending it on as well');
+  assert.ok(notes.filter((n) => n.ch === 2).length >= 2, 'the far side played it');
+});
+
+test('a portal carries what the pulse was carrying', () => {
+  const { p, outOf, note } = portalPatch();
+  // The line into the exit's note says channel 7; the line into the portal
+  // says channel 3. What comes out of the hole still answers to the chain it
+  // fell into.
+  p.lines[0].channelMode = 'set';
+  p.lines[0].channels = [createChannel(3, 'A')];
+  p.lines[1].channelMode = 'keep';
+  const { notes } = run(p, 2.2);
+  assert.ok(notes.length, 'something played');
+  assert.equal(notes[0].ch, 3, 'the channel came through the hole');
+  assert.equal(notes[0].vel, 100, 'and so did the velocity');
+  assert.ok(outOf && note);
+});
+
+test('a ring of portals ends rather than spinning inside one tick', () => {
+  // Two holes wired into each other: A comes out at B's entrance, B comes out
+  // at A's. Every hop costs a line, so it is ordinary feedback -- but if the
+  // hole itself were free in hops it would never stop.
+  const p = createPatch('portal');
+  p.bpm = 120;
+  p.grid = '1/16';
+  const clock = addNode(p, createNode('pulse', 0, 0, { division: '1/1' }));
+  const inA = addNode(p, createNode('portal', 10, 0, { pair: 'A' }));
+  const outA = addNode(p, createNode('portal', 0, 20, { pair: 'A' }));
+  const inB = addNode(p, createNode('portal', 10, 20, { pair: 'B' }));
+  const outB = addNode(p, createNode('portal', 0, 40, { pair: 'B' }));
+  connect(p, clock.id, inA.id);
+  connect(p, outA.id, inB.id);
+  connect(p, outB.id, inA.id);
+  const started = Date.now();
+  const { engine } = run(p, 2);
+  assert.ok(Date.now() - started < 5000, 'it came back');
+  assert.ok(engine.queue.size < 2000, 'and did not leave the queue full');
+});
