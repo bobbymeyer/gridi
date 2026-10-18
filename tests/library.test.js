@@ -163,13 +163,23 @@ function shape(patch) {
 
 test('every file in the library is what its builder produces', () => {
   assert.equal(LIBRARY.length, index.patches.length, 'the index lists every builder');
-  for (const entry of LIBRARY) {
+  for (const [i, entry] of LIBRARY.entries()) {
     const onDisk = readPatch(read(entry.file));
     assert.ok(onDisk, `${entry.file} opens`);
+    const built = entry.build();
     assert.equal(
       shape(onDisk),
-      shape(entry.build()),
+      shape(built),
       `${entry.file} is out of date -- run node tools/build.mjs`,
+    );
+    // The index is written from this same list, so a note edited on disk
+    // instead of in the builder survives until the next build and then
+    // silently reverts. That is how the samba went back to describing the
+    // drum kit it no longer is.
+    assert.deepEqual(
+      index.patches[i],
+      { file: entry.file, name: built.name, note: entry.note },
+      `the index entry for ${entry.file} is out of date -- run node tools/build.mjs`,
     );
   }
 });
@@ -198,7 +208,7 @@ test('every library patch plays with a moving hand', () => {
   for (const entry of index.patches) {
     const patch = readPatch(read(entry.file));
     const byChannel = new Map();
-    for (const note of play(patch, 90)) {
+    for (const note of play(patch, 150)) {
       if (!byChannel.has(note.ch)) byChannel.set(note.ch, []);
       byChannel.get(note.ch).push(note.vel);
     }
@@ -314,9 +324,47 @@ test('the samba is played on the bateria General MIDI actually has', () => {
   }
 });
 
+/** The exits of the portal group that strikes a given drum. */
+function holeFor(patch, note) {
+  return patch.nodes.filter((n) => n.type === 'portal'
+    && outgoing(patch, n.id).some((l) => {
+      const to = nodeById(patch, l.to);
+      return isDrumLine(l) && to.type === 'note' && drumNote(to) === note;
+    }));
+}
+
+/** Offsets of a figure drawn out of a hole, from its earliest hit. */
+function holeFigure(patch, note) {
+  const cells = holeFor(patch, note)
+    .map((exit) => {
+      const line = outgoing(patch, exit.id)[0];
+      return lineCells(exit, nodeById(patch, line.to));
+    })
+    .sort((a, b) => a - b);
+  return cells.map((c) => c - cells[0]);
+}
+
 test('the samba tamborim is the figure it says it is', () => {
   const patch = readPatch(read('samba.json'));
-  assert.deepEqual(figure(patch, splitFor(patch, 65)), [0, 2, 3, 5, 9, 11, 12, 14]);
+  assert.deepEqual(holeFigure(patch, 65), [0, 2, 3, 5, 9, 11, 12, 14]);
+});
+
+test('the figures that cost more to draw than to play go through a hole', () => {
+  // A fan pays for its own drawing: every branch drops a row, and the figure
+  // waits until the steepest one fits. The tamborim's eight hits span fourteen
+  // sixteenths and used to cost eighteen more than that just to be drawn, so
+  // the part came in a bar after it meant to. Out of a hole the only distance
+  // anybody pays is the offset.
+  const patch = readPatch(read('samba.json'));
+  for (const [name, note] of [['tamborim', 65], ['agogô', 67]]) {
+    const exits = holeFor(patch, note);
+    assert.ok(exits.length >= 2, `the ${name} comes out of a portal group`);
+    const first = Math.min(...exits.map((exit) => {
+      const line = outgoing(patch, exit.id)[0];
+      return lineCells(exit, nodeById(patch, line.to));
+    }));
+    assert.ok(first <= 16, `the ${name}'s first hit is ${first} cells out, which is over a bar of waiting`);
+  }
 });
 
 test('the samba surdo is muffled on the one and open on the two', () => {

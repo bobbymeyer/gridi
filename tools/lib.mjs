@@ -180,6 +180,55 @@ export function figure(patch, clock, offsets, build, {
 }
 
 /**
+ * A figure drawn out of a hole instead of off a fan.
+ *
+ * A fan pays for its own drawing. Each branch drops a row, a branch that drops
+ * rows has to spend cells on the drop before it can spend any on being late,
+ * and the whole figure waits until the steepest one fits: the samba tamborim's
+ * eight hits span fourteen sixteenths and cost eighteen more just to be drawn,
+ * so the part came in a bar after it meant to and the patch wore a diagonal
+ * the size of a bar and a half.
+ *
+ * Through a portal it does not. One entrance beside the clock, one exit per
+ * hit, each exit on a row of its own with nothing above it to climb past, and
+ * the only distance anybody pays is the offset itself. The split happens in
+ * the hole: everything on the letter speaks at once, which is what a figure is.
+ *
+ * @returns {{into: object, exits: object[], nodes: object[]}}
+ */
+export function portalFigure(patch, clock, offsets, build, {
+  letter, launch = 0, period = 16, col, row, rowStep = 6, lead = 1, min = 1,
+}) {
+  const into = downstream(patch, clock, {
+    type: 'portal',
+    cells: lead,
+    params: { pair: letter },
+  }).node;
+
+  // The earliest hit is the one placed in the bar; what the entrance already
+  // spent comes off its distance, so the figure lands where the bar wants it
+  // however long the lead-in is. Every other hit is drawn its own offset
+  // beyond that one, rather than reduced modulo the period: the rhythm is the
+  // same either way, but a figure whose lines run in the order of its hits is
+  // a figure you can read off the grid.
+  const first = Math.min(...offsets);
+  const base = phase(launch + first - lead, 0, period, min);
+
+  const exits = [];
+  const nodes = [];
+  [...offsets].sort((a, b) => a - b).forEach((offset, i) => {
+    const exit = addNode(patch, createNode('portal', col, row + i * rowStep, { pair: letter }));
+    const { node } = downstream(patch, exit, {
+      ...build(offset, i),
+      cells: base + offset - first,
+    });
+    exits.push(exit);
+    nodes.push(node);
+  });
+  return { into, exits, nodes };
+}
+
+/**
  * The shortest chain length that puts a voice where it belongs in the bar.
  *
  * A voice repeats every `period` cells, so being late by a whole number of
