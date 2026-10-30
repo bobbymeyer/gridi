@@ -13,7 +13,8 @@
 
 import { createPatch, createNode, addNode } from '../src/model.js';
 import {
-  downstream, figure, phase, channel, chord, drum, drumLine, KIT, modulate, sounds, GM,
+  downstream, figure, portalFigure, phase, channel, chord, drum, drumLine,
+  KIT, modulate, sounds, GM,
 } from './lib.mjs';
 
 const BAR = 16; // cells in a 4/4 bar, at a sixteenth a cell
@@ -113,22 +114,22 @@ export function sambaPatch() {
   /* Tamborim: the teleco-teco, on a high timbale because General MIDI has no
    * tamborim and a timbale is the nearest thing that is struck with a stick. */
   const tamClock = addNode(p, createNode('pulse', 0, 38, { division: '1/1', velocity: 84 }));
-  figure(p, tamClock, TAMBORIM, () => ({
+  portalFigure(p, tamClock, TAMBORIM, () => ({
     type: 'note',
     params: { ...drum(KIT.hiTimbale), length: 0.06, audition: true },
     line: drumLine(),
-  }), { launch: LAUNCH, period: BAR, min: 4 });
+  }), { letter: 'tam', launch: LAUNCH, period: BAR, col: 20, row: 38 });
 
   /* Agogô: the two bells, one 2/4 bar of them, repeating. */
   const agogoClock = addNode(p, createNode('pulse', 0, 78, { division: '1/2', velocity: 80 }));
-  figure(p, agogoClock, AGOGO.map((a) => a.offset), (offset) => {
+  portalFigure(p, agogoClock, AGOGO.map((a) => a.offset), (offset) => {
     const bell = AGOGO.find((a) => a.offset === offset);
     return {
       type: 'note',
       params: { ...drum(bell.note), velocity: bell.velocity, length: 0.1, audition: true },
       line: drumLine(),
     };
-  }, { launch: LAUNCH, period: HALF, min: 4 });
+  }, { letter: 'agogo', launch: LAUNCH, period: HALF, col: 20, row: 78 });
 
   /* Cuíca: the voice of the thing, and the one part that is not a pattern. It
    * speaks on about a third of the beats it could, and which of its two strokes

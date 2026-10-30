@@ -8,7 +8,8 @@ import { Renderer, keyName } from './render.js';
 import { Inspector, buildPalette } from './ui.js';
 import {
   createPatch, createNode, addNode, removeNode, removeLine, connect, canConnect,
-  demoPatch, OPENING_PATCH, serialize, deserialize, readPatch, nodeById, usedChannels, soundFor, setSound,
+  demoPatch, OPENING_PATCH, serialize, deserialize, readPatch, nodeById, portalPeers,
+  usedChannels, soundFor, setSound,
 } from './model.js';
 import { programName, programsFor, DRUM_CHANNEL } from './gm.js';
 import {
@@ -399,6 +400,15 @@ export function initGridi(mountEl, options = {}) {
         const useful = fed.filter((n) => n.type === 'param' || n.type === 'split' || n.type === 'key');
         if (!useful.length) return `${typeMeta(fed[0].type).label} — ignores waves`;
         return useful.map((n) => n.label || typeMeta(n.type).label).join(', ');
+      }
+      if (key === 'ends') {
+        const ends = portalPeers(state.patch, node);
+        if (!ends.length) {
+          return node.params.pair?.trim()
+            ? `nothing else is on “${node.params.pair.trim()}”`
+            : 'give it a letter';
+        }
+        return ends.map((n) => n.label || `portal ${n.params.pair}`).join(', ');
       }
       if (key === 'played') {
         const played = state.lastPlayed;

@@ -7,7 +7,7 @@
 
 import { NODE_TYPES, NODE_TYPE_KEYS, MODULATABLE, typeMeta } from './nodes.js';
 import { SCALES, NOTE_NAMES } from './music.js';
-import { channelSummary, createChannel, nodeById } from './model.js';
+import { channelSummary, createChannel, nodeById, portalPeers } from './model.js';
 import { SLOTS, asSlot } from './midi.js';
 import { clamp } from './util.js';
 import { lineCells } from './geometry.js';
@@ -32,6 +32,7 @@ const GLYPHS = {
   key: '<rect x="2" y="2" width="7" height="7"/><rect x="7" y="7" width="7" height="7"/>',
   keys: '<rect x="1" y="3" width="3" height="10"/><rect x="6" y="3" width="3" height="10"/><rect x="11" y="3" width="3" height="10"/>',
   curve: '<path d="M1 12c3.5 0 3.5-8 7-8s3.5 8 7 8" fill="none" stroke-width="2"/>',
+  portal: '<ellipse cx="8" cy="8" rx="4" ry="6.5" fill="none" stroke-width="2"/><circle cx="8" cy="8" r="1.6"/>',
 };
 
 function glyphSvg(type, color) {
@@ -231,7 +232,11 @@ export class Inspector {
       sync: () => {
         const ins = patch.lines.filter((l) => l.to === node.id).length;
         const outs = patch.lines.filter((l) => l.from === node.id).length;
-        value.textContent = `${ins} in / ${outs} out`;
+        // A portal with nothing leaving it is not a dead end, which is what
+        // "0 out" reads as everywhere else: what arrives leaves somewhere else
+        // entirely, and the row should say so.
+        const elsewhere = node.type === 'portal' && !outs && portalPeers(patch, node).length;
+        value.textContent = elsewhere ? `${ins} in / out elsewhere` : `${ins} in / ${outs} out`;
       },
     });
     this.refresh(patch, { kind: 'node', id: node.id });

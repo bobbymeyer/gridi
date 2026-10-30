@@ -13,7 +13,7 @@ import { EventQueue, clamp, rng, wrap } from './util.js';
 import { resolveDegree, SCALES } from './music.js';
 import { stepBeats, stepOnsetBeats, emitterFiresOn, beatsToSeconds, gridBeats } from './rhythm.js';
 import { lineCells } from './geometry.js';
-import { outgoing, incoming, nodeById, soundFor } from './model.js';
+import { outgoing, incoming, nodeById, portalPeers, soundFor } from './model.js';
 import { MODULATABLE, NODE_TYPES } from './nodes.js';
 import { LIMITS, RateMeter } from './limits.js';
 import { PPQN, DEFAULT_SLOT } from './midi.js';
@@ -558,6 +558,16 @@ export class Engine {
    * without a moment attached act on it; the rest let it go by.
    */
   handleWave(patch, node, evt) {
+    if (node.type === 'portal') {
+      // A wave is a wire's worth of value, and a portal is a wire: an LFO on
+      // one side of the grid can reach a Param on the other without a line
+      // long enough to be a rhythm in its own right.
+      if (evt.hops + 1 > MAX_HOPS) return;
+      for (const end of portalPeers(patch, node)) {
+        this.send(patch, end.id, evt.ctx, evt.time, evt.hops + 1);
+      }
+      return;
+    }
     if (node.type === 'split') {
       this.send(patch, node.id, evt.ctx, evt.time, evt.hops, node.params.stagger);
       return;
@@ -585,6 +595,38 @@ export class Engine {
   on_split(patch, node, evt) {
     this.onFire({ nodeId: node.id, time: evt.time, kind: 'thru' });
     this.send(patch, node.id, evt.ctx, evt.time, evt.hops, node.params.stagger);
+  }
+
+  /**
+   * A hole in the grid.
+   *
+   * Everywhere else here, distance is time: a line's length is how long its
+   * pulses take to walk it, which is the whole idea and occasionally the whole
+   * problem. A part that belongs half a screen away has to be drawn half a
+   * screen away, and the drawing costs beats nobody asked for.
+   *
+   * A portal is the exception, and the only one: what arrives at it leaves
+   * from every other portal sharing its letter, at the same instant, and
+   * carries on down their lines at the usual price. Nothing comes back out of
+   * the portal it went into -- a pulse that leaves where it arrived is what a
+   * line is for -- so two ends of one letter are a two-way hole and three are
+   * one in and two out.
+   *
+   * The hop count rises on the way through, so a ring of portals ends at
+   * MAX_HOPS like any other feedback rather than spinning inside one tick.
+   */
+  on_portal(patch, node, evt) {
+    this.onFire({ nodeId: node.id, time: evt.time, kind: 'thru' });
+    const ends = portalPeers(patch, node);
+    if (!ends.length) {
+      this.onFire({ nodeId: node.id, time: evt.time, kind: 'block' });
+      return;
+    }
+    if (evt.hops + 1 > MAX_HOPS) return;
+    for (const end of ends) {
+      this.onFire({ nodeId: end.id, time: evt.time, kind: 'pass' });
+      this.send(patch, end.id, evt.ctx, evt.time, evt.hops + 1);
+    }
   }
 
   on_chance(patch, node, evt) {

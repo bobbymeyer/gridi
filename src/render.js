@@ -11,7 +11,7 @@ import { DIVISIONS, euclid, patternString } from './rhythm.js';
 import { SCALES, NOTE_NAMES } from './music.js';
 import { WAVE_LABELS } from './voice.js';
 import { SHAPES, RATES } from './lfo.js';
-import { outgoing, incoming, channelSummary } from './model.js';
+import { outgoing, incoming, channelSummary, portalPeers, portalLetter } from './model.js';
 import { clamp } from './util.js';
 import { LIMITS } from './limits.js';
 
@@ -104,6 +104,14 @@ export function nodeReadout(node, patch) {
         primary: p.mode === 'set' ? keyName(p.root, p.scale) : p.mode,
         secondary: p.latch ? 'latch · project' : 'downstream only',
       };
+    case 'portal': {
+      const ends = portalPeers(patch, node).length;
+      return {
+        primary: portalLetter(node) ? String(p.pair).trim() : '—',
+        secondary: ends ? `${ends} other end${ends === 1 ? '' : 's'}` : 'no other end',
+        muted: ends === 0,
+      };
+    }
     default:
       return { primary: node.type, secondary: '' };
   }
@@ -245,6 +253,7 @@ export class Renderer {
     for (const line of patch.lines) this.drawLine(patch, line, index, selection, view);
     for (const line of patch.lines) this.drawLinePulses(line, index, now, view);
     if (ui.pendingFrom) this.drawPending(index, ui, view);
+    this.drawPortal(patch, selection, view);
     for (const node of patch.nodes) this.drawNode(patch, node, selection, now, view);
     if (ui.ghost) this.drawGhost(ui.ghost, view);
 
@@ -345,6 +354,36 @@ export class Renderer {
     const to = index.get(line.to);
     if (!from || !to) return null;
     return routeLine(from, to);
+  }
+
+  /**
+   * Where a selected portal comes out.
+   *
+   * A portal's other ends are the one connection in a patch with no line to
+   * read it off, so it is drawn on being asked for: pick one up and the holes
+   * it answers to are joined, faintly, to whatever is on the other side of the
+   * grid. Dashed and thin, because nothing travels along it -- the pulse is
+   * already there.
+   */
+  drawPortal(patch, selection, view) {
+    if (selection.kind !== 'node') return;
+    const node = patch.nodes.find((n) => n.id === selection.id);
+    if (!node || node.type !== 'portal') return;
+    const from = nodeRect(node);
+    const ctx = this.ctx;
+
+    ctx.save();
+    ctx.strokeStyle = this.colors.blue;
+    ctx.lineWidth = 1.5 / Math.max(view.zoom, 0.6);
+    ctx.setLineDash([3 / view.zoom, 5 / view.zoom]);
+    for (const end of portalPeers(patch, node)) {
+      const to = nodeRect(end);
+      ctx.beginPath();
+      ctx.moveTo(from.x + from.w / 2, from.y + from.h / 2);
+      ctx.lineTo(to.x + to.w / 2, to.y + to.h / 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   drawLine(patch, line, index, selection, view) {

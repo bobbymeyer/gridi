@@ -23,7 +23,7 @@ export const LIBRARY = [
   {
     file: 'samba.json',
     build: sambaPatch,
-    note: 'Caixa, surdo, tamborim and agogô. The surdo is a beat further out, which puts it on two and four.',
+    note: 'Surdo, caixa, ganzá, tamborim, agogô and cuíca, with a cavaquinho off the beat and a flute over the top.',
   },
   {
     file: 'house.json',

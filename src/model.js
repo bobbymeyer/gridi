@@ -181,6 +181,23 @@ export const lineById = (patch, id) => patch.lines.find((l) => l.id === id);
 export const outgoing = (patch, nodeId) => patch.lines.filter((l) => l.from === nodeId);
 export const incoming = (patch, nodeId) => patch.lines.filter((l) => l.to === nodeId);
 
+/** The letter a Portal answers to, or '' for one that has not been given one. */
+export const portalLetter = (node) => String(node?.params?.pair ?? '').trim().toLowerCase();
+
+/**
+ * The other ends of a portal: every portal on its letter except itself.
+ *
+ * Case and spaces are ignored, because "a" and "A " typed into two boxes a
+ * screen apart are one hole to anybody reading the patch. A portal with no
+ * letter has no other end rather than joining every other blank one.
+ */
+export function portalPeers(patch, node) {
+  const letter = portalLetter(node);
+  if (!letter) return [];
+  return patch.nodes.filter((n) =>
+    n.type === 'portal' && n.id !== node.id && portalLetter(n) === letter);
+}
+
 export function addNode(patch, node) {
   patch.nodes.push(node);
   return node;
