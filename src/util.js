@@ -72,3 +72,52 @@ export class EventQueue {
     this.items.length = 0;
   }
 }
+
+/**
+ * A response body, with a running count of what has arrived.
+ *
+ * `res.arrayBuffer()` resolves once and says nothing on the way, which for a
+ * thirty-two megabyte SoundFont is a minute of silence with no way to draw a
+ * bar across it. Reading the stream instead costs one concatenation at the end
+ * and buys a number on every chunk.
+ *
+ * `total` is what the response declares, and it is 0 when it declares nothing
+ * -- a chunked reply, or one the server compressed -- so a caller drawing a bar
+ * has to have something to show for not knowing. It can also be an undercount
+ * for the same reason, since the declared length is of the encoded body: clamp
+ * before dividing. A body that cannot be streamed falls back to the one-shot
+ * read, so this is never worse than what it replaces.
+ *
+ * @param {Response} res
+ * @param {(loaded: number, total: number) => void} [onProgress]
+ * @returns {Promise<ArrayBuffer>}
+ */
+export async function readWithProgress(res, onProgress = () => {}) {
+  const total = Number(res.headers?.get?.('content-length')) || 0;
+  const reader = res.body?.getReader?.();
+  if (!reader) {
+    const whole = await res.arrayBuffer();
+    onProgress(whole.byteLength, total || whole.byteLength);
+    return whole;
+  }
+
+  const chunks = [];
+  let loaded = 0;
+  onProgress(0, total);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value?.byteLength) continue;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress(loaded, total);
+  }
+
+  const bytes = new Uint8Array(loaded);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return bytes.buffer;
+}

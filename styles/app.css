@@ -766,6 +766,88 @@ input[type="checkbox"]:checked::after {
 
 .stage__drop[hidden] { display: none; }
 
+/* The sounds arriving.
+
+   The font is thirty-two megabytes and is fetched on the first press of play,
+   which is a wait somebody is owed an account of; one line in the footer, two
+   hundred pixels from where they are looking, was not it. A panel in the
+   corner, the bar, the two numbers, and then it goes. It never takes a click:
+   the patch is already playing underneath, on the built-in voices, and the
+   sound fills in when it lands. */
+.splash {
+  position: absolute;
+  left: 14px;
+  bottom: 34px;
+  z-index: 4;
+  display: flex;
+  align-items: stretch;
+  width: min(300px, calc(100% - 28px));
+  border: var(--rule-w) solid var(--rule);
+  background: var(--paper);
+  pointer-events: none;
+}
+.splash[hidden] { display: none; }
+.splash__mark {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: var(--red);
+  color: #fff;
+  font: 700 11px/1 var(--font);
+  letter-spacing: var(--track);
+}
+.splash__body {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+}
+.splash__body b {
+  font: 700 12px/1.1 var(--font);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.splash__meter {
+  height: 6px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  overflow: hidden;
+}
+.splash__meter i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--ink);
+  transition: width 120ms linear;
+}
+.splash__note {
+  font: var(--micro);
+  letter-spacing: var(--track);
+  color: var(--ink-soft);
+}
+
+/* Nothing has said how long it is -- a chunked reply, or one the server
+   compressed. A bar that cannot be filled honestly is not filled: it paces,
+   which says working without claiming a fraction it does not know. */
+.splash--waiting .splash__meter i {
+  width: 34%;
+  transition: none;
+  animation: splash-pace 1.4s ease-in-out infinite;
+}
+@keyframes splash-pace {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(294%); }
+}
+.splash--done .splash__meter i { background: var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash__meter i { transition: none; }
+  .splash--waiting .splash__meter i { animation: none; width: 100%; opacity: 0.4; }
+}
+
 /* The library. A short list, so it is a panel in the corner of the stage
    rather than anything that takes the screen over. */
 .sheet {

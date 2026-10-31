@@ -23,7 +23,7 @@ import { euclid, patternString, GRID_KEYS } from './rhythm.js';
 import {
   CELL, screenToWorld, hitNode, hitOutPort, hitLine, snapCell, findFreeCell, nodeRect,
 } from './geometry.js';
-import { clamp } from './util.js';
+import { clamp, readWithProgress } from './util.js';
 import { Governor, LIMITS, SCOPE_NOTE } from './limits.js';
 import { appMarkup } from './markup.js';
 
@@ -1271,6 +1271,93 @@ export function initGridi(mountEl, options = {}) {
   const size = (bytes) => (bytes >= 1e6 ? `${Math.round(bytes / 1e6)}MB` : `${Math.round(bytes / 1e3)}KB`);
 
   /**
+   * The splash: what is arriving, and how far along it is.
+   *
+   * The font is thirty-two megabytes, and until this it announced itself on one
+   * line in the footer and then said nothing for however long the wire took.
+   * A wait with no account of itself reads as a broken app, and the footer is
+   * the wrong place to put the account: it is the furthest thing on the page
+   * from the grid somebody is watching.
+   *
+   * It never blocks anything. The transport starts on the beat it was pressed
+   * and the patch is already playing underneath on the built-in voices, so the
+   * panel is news, not a door.
+   */
+  const splash = (() => {
+    const panel = $('splash');
+    const name = $('splash-name');
+    const bar = $('splash-bar');
+    const note = $('splash-note');
+    let timer = 0;
+    let showing = false;
+
+    const clear = () => {
+      clearTimeout(timer);
+      timer = 0;
+    };
+
+    /**
+     * How long a wait has to last before it is worth a panel.
+     *
+     * Down a wire this is nothing; served from the same machine the font is
+     * there in a fifth of a second, and a notice that appears and leaves in
+     * that time is a flicker, not an answer. So the panel is filled in from
+     * the first byte and only put up if the wait outlives this.
+     */
+    const PATIENCE = 400;
+
+    return {
+      /** Armed, empty, and pacing: nothing has arrived and no length is known. */
+      open(label, detail = 'asking…') {
+        clear();
+        panel.classList.add('splash--waiting');
+        panel.classList.remove('splash--done');
+        name.textContent = label;
+        bar.style.width = '';
+        note.textContent = detail;
+        if (showing) return;
+        timer = setTimeout(() => {
+          showing = true;
+          panel.hidden = false;
+        }, PATIENCE);
+      },
+      /**
+       * Another chunk. `total` is 0 when the response did not say how long it
+       * is, and the declared length is of the encoded body, so it can also be
+       * an undercount -- hence the clamp rather than a bar that runs past its
+       * own box.
+       */
+      progress(loaded, total) {
+        if (!total) {
+          note.textContent = `${size(loaded)} so far`;
+          return;
+        }
+        panel.classList.remove('splash--waiting');
+        bar.style.width = `${(clamp(loaded / total, 0, 1) * 100).toFixed(1)}%`;
+        note.textContent = `${size(loaded)} of ${size(total)}`;
+      },
+      /** Full, for long enough to be read, and then gone. */
+      close(detail) {
+        clear();
+        if (!showing) return; // it was over before anybody was told it had begun
+        panel.classList.remove('splash--waiting');
+        panel.classList.add('splash--done');
+        bar.style.width = '100%';
+        note.textContent = detail;
+        timer = setTimeout(() => {
+          showing = false;
+          panel.hidden = true;
+        }, 1600);
+      },
+      hide() {
+        clear();
+        showing = false;
+        panel.hidden = true;
+      },
+    };
+  })();
+
+  /**
    * Take a SoundFont file.
    *
    * Parsing is the cheap part -- it builds an index and never touches the sample
@@ -1342,25 +1429,35 @@ export function initGridi(mountEl, options = {}) {
    */
   function wantFont() {
     if (audio.soundfont || fontWanted) return fontWanted;
+    // Up before the index is even read: whatever the wait turns out to be, it
+    // starts at the press, and a panel that appears a second later looks like
+    // a second thing happening rather than an answer to the first.
+    splash.open('SoundFont');
     fontWanted = (async () => {
       try {
         const entry = await bundledFont();
+        splash.open(entry.name, 'asking…');
         const res = await fetch(asset(`soundfont/${entry.file}`));
         if (!res.ok) throw new Error(`${entry.file} ${res.status}`);
         // Said before the body arrives, and said with the number, because the
         // number is the reason the wait is worth explaining.
         const length = Number(res.headers.get('content-length')) || 0;
         setStatus(`Loading ${entry.name}${length ? `, ${size(length)}` : ''}…`, 'SoundFont.');
+        const bytes = await readWithProgress(res, (loaded, total) => splash.progress(loaded, total));
         // Not kept in storage: it is on disk beside the app already, and putting
         // a second copy in the browser's quota would only crowd out a font
         // someone actually chose.
-        const font = await useSoundfontFile(await res.arrayBuffer(), entry.file, { keep: false });
+        const font = await useSoundfontFile(bytes, entry.file, { keep: false });
         if (font) {
           setStatus(`${entry.name} by ${entry.author}, ${describe(font)}. Ready.`, 'SoundFont.');
+          splash.close(`${describe(font)}. Ready.`);
+        } else {
+          splash.hide();
         }
       } catch {
         fontWanted = null;
         setStatus('No SoundFont. Drop a .sf2 on the canvas to hear these sounds.', '');
+        splash.close('did not arrive — drop a .sf2 instead');
       }
     })();
     return fontWanted;
@@ -1404,6 +1501,11 @@ export function initGridi(mountEl, options = {}) {
       drop.textContent = 'forget it';
       drop.addEventListener('click', async () => {
         audio.useSoundfont(null);
+        // The fetch is remembered so that two presses of play do not start two
+        // downloads. Forgetting the font has to forget that as well, or asking
+        // for it again hands back the promise of the one just dropped and
+        // nothing happens.
+        fontWanted = null;
         await forgetSoundfont();
         setStatus('SoundFont dropped. Notes are back to the built-in blip.', 'Sounds.');
         showSounds(list);
