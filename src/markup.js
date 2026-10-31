@@ -177,6 +177,20 @@ const BODY = `
         <div class="sheet__body" id="sheet-list"></div>
       </div>
 
+      <!-- What the sounds cost, while they are costing it. The bundled font
+           is thirty-two megabytes and is not fetched until somebody presses
+           play, so the first press is a wait that has to account for itself.
+           It sits above the hints rather than over the patch: the transport
+           is already running underneath it. -->
+      <div class="splash" id="splash" hidden role="status">
+        <div class="splash__mark">sounds</div>
+        <div class="splash__body">
+          <b id="splash-name">SoundFont</b>
+          <div class="splash__meter"><i id="splash-bar"></i></div>
+          <span class="splash__note" id="splash-note"></span>
+        </div>
+      </div>
+
       <div class="stage__drop" id="drop" hidden>
         <b>drop to open</b>
         <span>a patch saved from Gridi, or a .sf2 SoundFont</span>

@@ -365,6 +365,16 @@ it on the first press of play. 261 instruments and 13 drum kits in 32MB — too
 much to spend on somebody who has not asked to hear anything yet, which is what
 loading it on boot spent.
 
+Deferring it moves the cost to the press, so the press has to account for it. A
+panel in the corner of the grid names the font, draws a bar and counts the
+megabytes as they land, which means reading the response as a stream rather
+than waiting on `arrayBuffer()` for a number that only arrives once there is
+nothing left to report. It never blocks: the transport starts on the beat it
+was pressed, those first notes go to the built-in voices and to MIDI, and the
+sound fills in underneath. A response that does not declare its length — a
+chunked reply, or one the server compressed — gets a bar that paces rather than
+one that invents a fraction.
+
 <https://www.schristiancollins.com/generaluser>
 
 His licence is in `soundfont/LICENSE.txt`, unaltered. It permits use in
@@ -592,10 +602,10 @@ voices and the SoundFont player, Web MIDI for output and input. The SoundFont
 parser is `src/sf2.js` and touches no browser API, so it is read and checked
 outside one.
 
-`npm test` runs 357 tests under `node --test`. `engine`, `model`, `music`,
-`rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf` and `geometry` have no DOM,
-audio or MIDI dependencies and are tested directly; the engine runs against a fake clock
-and stub outputs. The synth is checked in a browser at
+`npm test` runs 362 tests under `node --test`. `engine`, `model`, `music`,
+`rhythm`, `voice`, `sync`, `lfo`, `limits`, `shelf`, `util` and `geometry` have
+no DOM, audio or MIDI dependencies and are tested directly; the engine runs
+against a fake clock and stub outputs. The synth is checked in a browser at
 `tests/audio-check.html`.
 
 Web MIDI: Chrome, Edge, Opera, Firefox 108+. Not Safari and not any iOS
